@@ -1,0 +1,6 @@
+# 本地中间产物（原始数据快照 data/raw 与交付报告保留在仓库中）
+data/processed/
+output/figures/
+output/tables/
+__pycache__/
+.venv/

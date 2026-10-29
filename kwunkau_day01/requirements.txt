@@ -1,0 +1,13 @@
+pandas==2.3.2
+numpy>=2.0
+matplotlib==3.10.5
+scipy>=1.16
+statsmodels>=0.14
+baostock==0.9.1
+requests>=2.32
+playwright==1.58.0
+
+# Notebook（生成 / 执行 notebooks/kwunkau_day01_research.ipynb）
+nbformat>=5.10
+nbclient>=0.10
+ipykernel>=6.29
