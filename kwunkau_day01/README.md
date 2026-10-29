@@ -56,7 +56,11 @@ python run_all.py --refresh  # 重新抓取全部原始数据，约 1 分钟
 `run_all.py` 会校验当前解释器是否在虚拟环境中、Python 是否 ≥ 3.12，不满足时给出命令提示并退出。
 完整流程也可作为单个 Notebook 打开：`output/kwunkau_day01_research.ipynb`。
 
-**Notebook（Colab）**：_上传后填写分享链接_ → `https://colab.research.google.com/drive/<fileId>`
+**Notebook 在线查看（nbviewer）**：`https://nbviewer.org/github/kwunkau/quant-research/blob/main/kwunkau_day01/output/kwunkau_day01_research.ipynb`
+
+**Notebook 在线运行（Colab）**：`https://colab.research.google.com/github/kwunkau/quant-research/blob/main/kwunkau_day01/output/kwunkau_day01_research.ipynb`
+
+**仓库**：`https://github.com/kwunkau/quant-research`
 
 ## 数据来源与口径
 

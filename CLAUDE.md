@@ -67,22 +67,44 @@ python -m venv .venv            # Python 3.12+
 - 结构固定：研究思路 → 数据与方法 → 研究结果 → 结论与思考 → 复现说明 → 参考文献。
 - 结论必须与统计输出一致；不显著就写不显著，不做选择性汇报。
 
-## 6. 作业提交（Google Colab 为标准方式）
+## 6. 作业提交（GitHub 公开仓库 + nbviewer 为标准方式）
 
 提交三件套：
 
-1. `report.pdf`
-2. **Google Colab Notebook 链接**（自包含单文件，`notebooks/*.ipynb`）
-3. `src/` 工程代码（权威实现，可维护、可命令行复现）
+1. `output/kwunkau_dayNN_report.pdf`
+2. **nbviewer 链接**（渲染已执行的 Notebook）+ **Colab 直开链接**（可在线运行）
+3. `src/` 工程代码（权威实现，可命令行复现）
 
-### 6.1 Colab 链接的交付标准
+### 6.1 仓库约定
 
-- 链接必须来自 colab.research.google.com，分享权限设为「**任何拥有链接的人可查看**」；
-  需要评审直接运行时给「编辑者」，并确认他人打开后「全部运行」可跑通。
-- 链接写入 `README.md` 与报告「复现说明」一节，格式：
-  `Notebook（Colab）：https://colab.research.google.com/drive/<fileId>`
+- 所有作业共用一个**公开**仓库：`github.com/kwunkau/quant-research`，主分支 `main`。
+  私有仓库 nbviewer 无法读取，必须 public。
+- 仓库根目录 = 项目根 `021量化研究/`，各次作业放在 `kwunkau_dayNN/` 子目录下。
+- 链接只在 `src/config.py` 维护四处（`GITHUB_USER` / `GITHUB_REPO` / `GITHUB_BRANCH` / `NB_PATH`），
+  其余链接由代码推导，禁止在报告里手写 URL。
 
-### 6.2 Notebook 必须满足的 Colab 要求
+### 6.2 推送流程（gh CLI 已登录，可整套脚本化）
+
+1. 项目根执行 `git init -b main`（仅首次）。
+2. `.gitignore` 规则：忽略 `.venv/`、`__pycache__/`、`data/processed/`、`output/figures/`、`output/tables/`；
+   **保留** `data/raw/`（快照，约 2MB）、报告 PDF/HTML、Notebook、`results.json`。
+3. `git add -A && git commit`。
+4. 首次建仓：`gh repo create quant-research --public --source=. --remote=origin --push`；
+   后续更新：`git push`。
+5. 链接推导规则：
+   - nbviewer：`https://nbviewer.org/github/<user>/<repo>/blob/<branch>/<path>`
+   - Colab：把上一条的 `github.com` 换成 `colab.research.google.com/github`
+   - raw 校验：`https://raw.githubusercontent.com/<user>/<repo>/<branch>/<path>`
+6. 重新生成报告，使链接写入 PDF「复现说明」，然后再提交、推送一次（保证仓库内容与 PDF 一致）。
+
+### 6.3 链接验收标准
+
+- `raw.githubusercontent.com` 返回 200，且文件体积与本机 `.ipynb` 一致。
+- nbviewer 页面返回 200，页面中能看到标题与图片（空输出说明没推执行结果，要重跑后再推）。
+- Colab 直开链接可正常打开（不要求当场运行）。
+- **推送前必须执行过 Notebook**，输出（图表、表格、数字）已内嵌；空输出直接推送视为不合格。
+
+### 6.4 Notebook 要求
 
 - **首个代码单元识别环境**：`IN_COLAB = "google.colab" in sys.modules`，为真时自动
   `!pip -q install <依赖>` 与 `!apt-get -qq install -y fonts-wqy-zenhei`，并用
@@ -91,9 +113,8 @@ python -m venv .venv            # Python 3.12+
 - **数据获取有降级**：优先读 `data/raw/` 快照 → 无快照则联网抓取 → 抓取失败时抛出带
   「上传 CSV 后重跑」提示的明确异常。
 - **输出干净**：单元格输出中不得出现本机路径、用户名、内网地址；图片内嵌在 `.ipynb` 中。
-- **与报告一致**：Notebook 的关键数字必须与 `results.json` 一致（可在末尾加一致性校验单元）。
-- 提交前在 **全新 Colab 运行时**（不是复用已有会话）完整跑一遍，确认无报错、无警告性缺字。
+- **与报告一致**：关键数字必须与 `results.json` 一致。
 
-### 6.3 备选方式
+### 6.5 备选方式
 
-GitHub + nbviewer、Kaggle Notebooks 仅作为备选，不作为提交标准；若使用需在 README 注明原因。
+Colab 上传单文件、Kaggle Notebooks、Gitee 镜像（国内访问更快）可作为备选，需在 README 注明原因。
