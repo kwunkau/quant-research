@@ -28,12 +28,12 @@ SEED = 20261029
 GITHUB_USER = "kwunkau"
 GITHUB_REPO = "quant-research"
 GITHUB_BRANCH = "main"
-NB_PATH = f"kwunkau_day01/output/{PROJECT_ID}_research.ipynb"
 
-_NB_BLOB = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}/blob/{GITHUB_BRANCH}/{NB_PATH}"
-NBVIEWER_URL = f"https://nbviewer.org/github/{GITHUB_USER}/{GITHUB_REPO}/blob/{GITHUB_BRANCH}/{NB_PATH}"
-COLAB_URL = _NB_BLOB.replace("github.com", "colab.research.google.com/github")
+# 仓库根 = 项目根，作业目录名即 PROJECT_ID
+NB_PATH = f"{PROJECT_ID}/output/{PROJECT_ID}_research.ipynb"
 REPO_URL = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}"
+NBVIEWER_URL = (f"https://nbviewer.org/github/{GITHUB_USER}/{GITHUB_REPO}"
+                f"/blob/{GITHUB_BRANCH}/{NB_PATH}")
 
 # 主检验族：BH 多重检验校正覆盖的 p 值
 BOOTSTRAP_N = 500
@@ -56,7 +56,7 @@ def setup_matplotlib() -> None:
     if Path(FONT_PATH).exists():
         font_manager.fontManager.addfont(FONT_PATH)
     else:
-        # 非 Windows 环境（如 Colab）按可用字体回退
+        # 非 Windows 环境按可用字体回退
         for name in ["SimHei", "Microsoft YaHei", "WenQuanYi Zen Hei",
                      "Noto Sans CJK SC", "AR PL UMing CN"]:
             if any(f.name == name for f in font_manager.fontManager.ttflist):

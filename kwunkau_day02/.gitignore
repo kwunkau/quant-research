@@ -1,0 +1,5 @@
+data/processed/
+output/figures/
+output/tables/
+__pycache__/
+.venv/

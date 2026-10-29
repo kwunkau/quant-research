@@ -36,7 +36,7 @@ kwunkau_day01/
     ├── figures/          # 图 1–5（PNG）
     ├── tables/           # t01–t09 统计表
     ├── results.json      # 报告引用的全部统计结果
-    ├── kwunkau_day01_research.ipynb  # 自包含 Notebook（Colab 打开）
+    ├── kwunkau_day01_research.ipynb  # 自包含 Notebook（nbviewer 在线查看）
     ├── kwunkau_day01_report.html  # 报告源码
     └── kwunkau_day01_report.pdf   # 交付报告（5 页）
 ```
@@ -57,8 +57,6 @@ python run_all.py --refresh  # 重新抓取全部原始数据，约 1 分钟
 完整流程也可作为单个 Notebook 打开：`output/kwunkau_day01_research.ipynb`。
 
 **Notebook 在线查看（nbviewer）**：`https://nbviewer.org/github/kwunkau/quant-research/blob/main/kwunkau_day01/output/kwunkau_day01_research.ipynb`
-
-**Notebook 在线运行（Colab）**：`https://colab.research.google.com/github/kwunkau/quant-research/blob/main/kwunkau_day01/output/kwunkau_day01_research.ipynb`
 
 **仓库**：`https://github.com/kwunkau/quant-research`
 

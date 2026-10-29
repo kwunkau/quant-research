@@ -9,7 +9,6 @@
 ## 在线查看 Notebook
 
 - nbviewer：`https://nbviewer.org/github/kwunkau/quant-research/blob/main/kwunkau_day01/output/kwunkau_day01_research.ipynb`
-- Colab 在线运行：`https://colab.research.google.com/github/kwunkau/quant-research/blob/main/kwunkau_day01/output/kwunkau_day01_research.ipynb`
 
 ## 复现
 

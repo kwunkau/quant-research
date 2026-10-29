@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .config import COLAB_URL, FIG_DIR, NBVIEWER_URL, OUTPUT, PROJECT_ID, REPO_URL, TABLE_DIR
+from .config import FIG_DIR, NBVIEWER_URL, OUTPUT, PROJECT_ID, REPO_URL, TABLE_DIR
 
 CSS = """
 @page { size: A4; margin: 14mm 14mm 12mm 14mm; }
@@ -246,7 +246,6 @@ R² = 0.563），但对<b>次日</b>收益没有可用的预测力（r = {nd['pe
 <code>output/figures/</code>（图 1–5）、<code>output/{PROJECT_ID}_report.html</code>、<code>output/{PROJECT_ID}_report.pdf</code>。
 报告中每个数字均由 <code>results.json</code> 渲染，未手工填写；完整流程亦整合为单个自包含 Notebook（<code>output/{PROJECT_ID}_research.ipynb</code>），已推送至 GitHub 公开仓库 <a class="url" href="{REPO_URL}">{REPO_URL}</a>。</p>
 <p class="small" style="text-align:left;margin:1mm 0 0">在线查看（nbviewer）：<br><a class="url" href="{NBVIEWER_URL}">{NBVIEWER_URL}</a></p>
-<p class="small" style="text-align:left;margin:1mm 0 0">在线运行（Colab）：<br><a class="url" href="{COLAB_URL}">{COLAB_URL}</a></p>
 
 <h2>附表　主要变量描述统计</h2>
 <table>
