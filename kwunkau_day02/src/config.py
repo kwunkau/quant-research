@@ -82,9 +82,14 @@ GITHUB_BRANCH = "main"
 
 NB_PATH = f"{PROJECT_ID}/output/{PROJECT_ID}_research.ipynb"
 REPO_URL = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}"
-NBVIEWER_URL = (f"https://nbviewer.org/github/{GITHUB_USER}/{GITHUB_REPO}"
-                f"/blob/{GITHUB_BRANCH}/{NB_PATH}")
 GITHUB_NB_URL = f"{REPO_URL}/blob/{GITHUB_BRANCH}/{NB_PATH}"
+
+# nbviewer 的 GitHub 直连在提交时遇到 API 限流（503/缓存 404），改用 /urls/ + CDN 代理；
+# 限流恢复后 NBVIEWER_CANONICAL 也可用。
+NBVIEWER_CANONICAL = (f"https://nbviewer.org/github/{GITHUB_USER}/{GITHUB_REPO}"
+                      f"/blob/{GITHUB_BRANCH}/{NB_PATH}")
+NBVIEWER_URL = (f"https://nbviewer.org/urls/raw.githack.com/{GITHUB_USER}/{GITHUB_REPO}"
+                f"/{GITHUB_BRANCH}/{NB_PATH}")
 
 FONT_PATH = "C:/Windows/Fonts/simhei.ttf"
 

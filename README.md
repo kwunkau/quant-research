@@ -10,7 +10,7 @@
 ## 在线查看 Notebook
 
 - day01：`https://nbviewer.org/github/kwunkau/quant-research/blob/main/kwunkau_day01/output/kwunkau_day01_research.ipynb`
-- day02：`https://nbviewer.org/github/kwunkau/quant-research/blob/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
+- day02：`https://nbviewer.org/urls/raw.githack.com/kwunkau/quant-research/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
 
 ## 复现
 

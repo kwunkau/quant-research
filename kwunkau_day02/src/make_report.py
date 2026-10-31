@@ -11,7 +11,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from .config import FIG_DIR, GITHUB_NB_URL, NBVIEWER_URL, OUTPUT, PROJECT_ID, REPO_URL
+from .config import (FIG_DIR, GITHUB_NB_URL, NBVIEWER_CANONICAL, NBVIEWER_URL,
+                     OUTPUT, PROJECT_ID, REPO_URL)
 
 CSS = """
 @page { size: A4; margin: 13mm 14mm 11mm 14mm; }
@@ -409,10 +410,10 @@ top3/5/8 为
 报告中每个数字均由 <code>results.json</code> 渲染，未手工填写；完整流程亦整合为自包含 Notebook
 （<code>output/{PROJECT_ID}_research.ipynb</code>），已推送至 GitHub 公开仓库
 <a class="url" href="{REPO_URL}">{REPO_URL}</a>。</p>
-<p class="small" style="text-align:left;margin:.5mm 0 0">在线查看（nbviewer，主）：<br>
+<p class="small" style="text-align:left;margin:.5mm 0 0">在线查看（nbviewer）：<br>
 <a class="url" href="{NBVIEWER_URL}">{NBVIEWER_URL}</a><br>
-若 nbviewer 暂时不可用，可用 GitHub 原生 Notebook 视图：<br>
-<a class="url" href="{GITHUB_NB_URL}">{GITHUB_NB_URL}</a></p>
+备选：nbviewer 直连 <a class="url" href="{NBVIEWER_CANONICAL}">{NBVIEWER_CANONICAL}</a>；
+GitHub 原生视图 <a class="url" href="{GITHUB_NB_URL}">{GITHUB_NB_URL}</a>。</p>
 
 <h2>参考文献</h2>
 <ol class="ref">

@@ -40,9 +40,9 @@ python run_all.py
 
 ## 在线查看
 
-- nbviewer（主）：`https://nbviewer.org/github/kwunkau/quant-research/blob/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
-- GitHub 原生 Notebook 视图（备用，nbviewer 偶发 503/缓存延迟时使用）：
-  `https://github.com/kwunkau/quant-research/blob/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
+- nbviewer（可用）：`https://nbviewer.org/urls/raw.githack.com/kwunkau/quant-research/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
+- nbviewer 直连（GitHub API 限流恢复后可用）：`https://nbviewer.org/github/kwunkau/quant-research/blob/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
+- GitHub 原生 Notebook 视图（备用）：`https://github.com/kwunkau/quant-research/blob/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
 
 ## 说明
 
