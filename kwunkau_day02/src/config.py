@@ -84,6 +84,7 @@ NB_PATH = f"{PROJECT_ID}/output/{PROJECT_ID}_research.ipynb"
 REPO_URL = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}"
 NBVIEWER_URL = (f"https://nbviewer.org/github/{GITHUB_USER}/{GITHUB_REPO}"
                 f"/blob/{GITHUB_BRANCH}/{NB_PATH}")
+GITHUB_NB_URL = f"{REPO_URL}/blob/{GITHUB_BRANCH}/{NB_PATH}"
 
 FONT_PATH = "C:/Windows/Fonts/simhei.ttf"
 
