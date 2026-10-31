@@ -1,0 +1,8 @@
+{
+  "source": "baostock query_history_k_data_plus（ETF 日线，不复权）",
+  "fetched_at": "2026-10-31T09:03:05",
+  "start": "2019-01-02",
+  "end": "2026-10-30",
+  "n_rows": 30879,
+  "n_codes": 18
+}

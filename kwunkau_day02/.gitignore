@@ -3,3 +3,7 @@ output/figures/
 output/tables/
 __pycache__/
 .venv/
+.ipynb_checkpoints/
+
+# 第三方付费研报，不在公开仓库分发
+华泰研报.pdf
