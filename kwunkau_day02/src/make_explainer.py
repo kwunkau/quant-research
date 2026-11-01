@@ -656,7 +656,10 @@ def build_html() -> str:
     </div>
   </div>
   <div class="callout">为什么差这么多？三处口径不同：<b>{ref['n_industries']} 个行业指数 vs {meta['n_etfs']} 只 ETF、{ref['period'][:4]} 年起 vs {meta['start'][:4]} 年起、
-  Wind 主动买卖 vs 量价代理。</b>所以这不是“研报错了”，而是“换了一套材料，做不出同样的菜”。</div>
+  Wind 主动买卖 vs 量价代理。</b>为了单独检验“数据源”这一项，我们又用新浪 {res['industry']['n_boards']} 个行业板块的逐笔主动买卖资金流，
+  在研报同区间、同规则下重做：原始因子 {pct(res['industry']['avg']['base']['cagr'])}、综合因子
+  {pct(res['industry']['avg']['composite']['cagr'])}、等权基准 {pct(res['industry']['benchmark']['cagr'])}。
+  <b>换回主动买卖数据也没有复现</b>，差距不能只怪数据源，行业划分和主动买卖算法同样关键。</div>
   <div class="grid3" style="margin-top:14px">
     <div class="card kpi"><div class="l">基础因子</div><div class="v">{pct(per['gross_base']['cagr'])}</div><div class="d">最大回撤 {pct(per['gross_base']['mdd'])}</div></div>
     <div class="card kpi"><div class="l">综合因子</div><div class="v">{pct(per['gross_composite']['cagr'])}</div><div class="d">最大回撤 {pct(per['gross_composite']['mdd'])}</div></div>
@@ -777,7 +780,7 @@ def build_html() -> str:
 
   <div class="grid2" style="margin-top:16px">
     <div class="card"><h3>不要误读</h3>
-      <p><b>不是“研报错了”：</b>口径不同。{ref['n_industries']} 个行业指数、{ref['period'][:4]} 年起、Wind 主动买卖，和 {meta['n_etfs']} 只 ETF、{meta['start'][:4]} 年起、量价代理，本来就不该有一样的收益。</p>
+      <p><b>不是“研报一定错了”：</b>新浪行业口径仍与研报的中信行业 + Wind 算法不同；能下的结论是“在公开数据上不可复现”，而不是“方法无效”。</p>
       <p><b>不是“因子完全没用”：</b>综合因子确实把回撤从 {pct(per['gross_base']['mdd'])} 降到
       {pct(per['gross_composite']['mdd'])}，只是绝对收益不够。</p>
       <p><b>不是“5000 万一定亏”：</b>冲击假设 5/10/20bp 下，净年化在

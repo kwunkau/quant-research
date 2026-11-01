@@ -317,7 +317,10 @@ footer{border-top:1px solid var(--border);padding:20px 0 40px;color:var(--muted)
     </div>
   </div>
   <div class="callout">为什么差这么多？三处口径不同：<b>40 个行业指数 vs 18 只 ETF、2018 年起 vs 2020 年起、
-  Wind 主动买卖 vs 量价代理。</b>所以这不是“研报错了”，而是“换了一套材料，做不出同样的菜”。</div>
+  Wind 主动买卖 vs 量价代理。</b>为了单独检验“数据源”这一项，我们又用新浪 46 个行业板块的逐笔主动买卖资金流，
+  在研报同区间、同规则下重做：原始因子 1.5%、综合因子
+  8.1%、等权基准 10.4%。
+  <b>换回主动买卖数据也没有复现</b>，差距不能只怪数据源，行业划分和主动买卖算法同样关键。</div>
   <div class="grid3" style="margin-top:14px">
     <div class="card kpi"><div class="l">基础因子</div><div class="v">5.3%</div><div class="d">最大回撤 -44.1%</div></div>
     <div class="card kpi"><div class="l">综合因子</div><div class="v">8.1%</div><div class="d">最大回撤 -29.4%</div></div>
@@ -438,7 +441,7 @@ footer{border-top:1px solid var(--border);padding:20px 0 40px;color:var(--muted)
 
   <div class="grid2" style="margin-top:16px">
     <div class="card"><h3>不要误读</h3>
-      <p><b>不是“研报错了”：</b>口径不同。40 个行业指数、2018 年起、Wind 主动买卖，和 18 只 ETF、2020 年起、量价代理，本来就不该有一样的收益。</p>
+      <p><b>不是“研报一定错了”：</b>新浪行业口径仍与研报的中信行业 + Wind 算法不同；能下的结论是“在公开数据上不可复现”，而不是“方法无效”。</p>
       <p><b>不是“因子完全没用”：</b>综合因子确实把回撤从 -44.1% 降到
       -29.4%，只是绝对收益不够。</p>
       <p><b>不是“5000 万一定亏”：</b>冲击假设 5/10/20bp 下，净年化在

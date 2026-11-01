@@ -94,6 +94,22 @@ def build_html(res: dict) -> str:
     def smon(series: str, month: str) -> str:
         return f"{facts[series][month] * 100:+.1f}%".replace("-", "−")
 
+    ind = res["industry"]
+    ia, ib = ind["avg"], ind["benchmark"]
+    iic = ind["ic"]
+
+    def cmp(a: float, b: float, hi: str = "高于", lo: str = "低于") -> str:
+        return hi if a > b else lo
+
+    ind_rows = "".join(
+        f"<tr><td>{label}</td><td>{pct(m['cagr'])}</td><td>{pct(m['mdd'])}</td>"
+        f"<td>{pct(r_['cagr'])}</td><td>{pct(r_['mdd'])}</td></tr>"
+        for label, m, r_ in [("原始因子（W=20–24 平均）", ia["base"], ref["base"]),
+                             ("综合因子（W=20–24 平均）", ia["composite"], ref["composite"]),
+                             ("行业等权基准", ib, ref["benchmark"])])
+    ind_key = ind["key_dates"]
+    ind_semi = " → ".join(f"{k['semi_pos']}/{k['n_other']}" for k in ind_key)
+
     mon = pd.DataFrame(rv["monthly"]).set_index("code")
     ytd_map = ytd.set_index("code")["ytd"]
 
@@ -215,11 +231,11 @@ def build_html(res: dict) -> str:
 <h3>2.1 数据与样本</h3>
 <p>数据为 {meta['n_etfs']} 只行业/主题 ETF 的日线（baostock，含成交额、换手率、涨跌幅），
 区间 {meta['start']}–{meta['end']}，共 {meta['n_days']:,} 个交易日、{meta['n_rebalances']} 次周度调仓；
-新浪单只 ETF 主力资金流（2025-02 起）仅用于代理校验与 2026 案例。样本从 2020 年开始，
+新浪单只 ETF 主力资金流（2025-02 起）仅用于代理校验与 2026 案例；新浪行业板块资金流（2018-12 起）用于 3.2 节的行业口径复现。样本从 2020 年开始，
 因为满足“上市满 120 个交易日”的行业 ETF 直到 2020 年初才达到 {meta['eligible_at_start']} 只，
 更早的截面宽度不足。
 与研报有三处口径差异：标的从 40 个中信行业指数换成 {meta['n_etfs']} 只 ETF；时间从 2018-12 起换成 2020-01 起；
-数据从 Wind 主动买卖金额换成公开量价代理。<b>这三处差异是“绝对收益未复现”的主要原因，不应简单归因于方法失效。</b></p>
+数据从 Wind 主动买卖金额换成公开量价代理。3.2 节用行业板块主动买卖数据单独检验了“数据源”这一项。</p>
 
 <h3>2.2 主动净买入的公开数据代理</h3>
 <p>公开数据没有逐笔主动买卖，本文用 Chaikin 资金流乘数
@@ -275,7 +291,39 @@ def build_html(res: dict) -> str:
 </table>
 <div class="cap">表1　业绩指标（2020-01-02–2026-10-30；超额 = 年化 − 等权基准年化；5000 万组合含成本与容量约束）。</div>
 
-<h3>3.2 执行层：5000 万扣成本后只剩 3%，超额转负</h3>
+<h3>3.2 补数据：用行业板块资金流回到研报口径</h3>
+<p>ETF 口径缺的是研报核心输入——<b>逐笔主动买卖金额</b>。新浪行业板块资金流按逐笔主动买卖划分净流入，
+与 Wind 口径同源（算法不同），且覆盖 2010 年至今，可以在研报同区间（{ind['start']}–{ind['end']}）、
+同层级（{ind['n_boards']} 个新浪行业 vs 研报 {ref['n_industries']} 个中信行业）、同规则（W=20–24 五组平均、
+周度 top5、次日调仓、不计费用）下重做一遍。成交额由“净流入额 / 净流入率”反推，
+买入额 =（成交额 + 净流入）/2，从而还原研报的“买入占比 − 卖出占比”。
+结果见表2：原始因子年化 {pct(ia['base']['cagr'])}（研报 {pct(ref['base']['cagr'],2)}），
+综合因子 {pct(ia['composite']['cagr'])}（研报 {pct(ref['composite']['cagr'],2)}），
+等权基准 {pct(ib['cagr'])}（研报 {pct(ref['benchmark']['cagr'],2)}）。
+原始因子{cmp(ia['base']['cagr'], ib['cagr'], '跑赢', '跑输')}基准 {abs(ia['base']['cagr']-ib['cagr'])*100:.1f} pct，
+综合因子{cmp(ia['composite']['cagr'], ib['cagr'], '跑赢', '跑输')}基准 {abs(ia['composite']['cagr']-ib['cagr'])*100:.1f} pct；
+综合较原始 {pp(ia['composite']['cagr']-ia['base']['cagr'])}、最大回撤 {pct(ia['base']['mdd'])} → {pct(ia['composite']['mdd'])}。
+W=20 周度 Rank IC：原始因子 {iic['base']['mean_ic']:.3f}（t={iic['base']['ic_t']:.2f}），
+综合因子 {iic['composite']['mean_ic']:.3f}（t={iic['composite']['ic_t']:.2f}）；
+四个微观维度中最大净流入 {iic['max_in']['mean_ic']:.3f}（t={iic['max_in']['ic_t']:.2f}）、
+广度 {iic['breadth']['mean_ic']:.3f}（t={iic['breadth']['ic_t']:.2f}）、
+净流出之和 {iic['out_sum']['mean_ic']:.3f}（t={iic['out_sum']['ic_t']:.2f}）。
+流向图逐日求解最大误差中位数 {ind['flowmap_median_err']*1000:.2f}‰、
+{ind['flowmap_share_below_5permille']*100:.1f}% 的日期低于 5‰；三个示例日{ind_key[0]['semi_board']}的净流入为正个数为
+{ind_semi}（研报电子 {ref['semi_breadth_path']}）。
+<b>结论：换回主动买卖口径后，原始因子与“广度拐点”仍未复现</b>，“综合优于原始、回撤收窄”的方向仍成立，
+但两者都{cmp(ia['composite']['cagr'], ib['cagr'], '跑赢', '跑输')}等权基准；综合因子 IC 为负，
+与其跑输基准一致——相对原始因子的改善只是“少亏”，不是正向选股能力。
+因此 ETF 口径的差距<b>不能只归因于数据源</b>，行业划分（新浪 vs 中信）与主动买卖算法同样关键。
+板块数据没有流通市值，流向图中 S 用成交额占比代替。</p>
+
+<table>
+<tr><th>组合</th><th>年化（本地）</th><th>最大回撤（本地）</th><th>年化（研报）</th><th>最大回撤（研报）</th></tr>
+{ind_rows}
+</table>
+<div class="cap">表2　行业口径复现（新浪 {ind['n_boards']} 个行业板块资金流，{ind['start']}–{ind['end']}，W=20–24 五组平均，不计费用）。</div>
+
+<h3>3.3 执行层：5000 万扣成本后只剩 3%，超额转负</h3>
 <p>表1 第二组是 5000 万元、参与率≤5% ADV、含成本的模拟。基础因子年化 {pct(nb['cagr'])}、
 综合因子 {pct(nc['cagr'])}、等权基准 {pct(bmn['cagr'])}；综合因子年化成本拖累
 {pct(nc['cost_drag_annual'])}，最大参与率 {nc['max_participation']*100:.1f}%，
@@ -289,7 +337,7 @@ def build_html(res: dict) -> str:
 不能拒绝“超额为零”。成本敏感性也不小：冲击 5bp 时年化 {pct(cost_max)}，
 20bp 时只有 {pct(cost_min)}——结论取决于冲击假设，不能只看一个点估计。</p>
 
-<h3>3.3 容量：不是“越大越差”，而是策略被约束改变了</h3>
+<h3>3.4 容量：不是“越大越差”，而是策略被约束改变了</h3>
 <p>表3 与图2 的容量曲线<b>不是单调下降</b>：1000 万 {pct(cap.iloc[0]['年化收益'])}、
 3000 万 {pct(cap.iloc[1]['年化收益'])}、5000 万 {pct(cap.iloc[2]['年化收益'])}，
 随后 1 亿 {pct(cap.iloc[3]['年化收益'])}、2 亿 {pct(cap.iloc[4]['年化收益'])}、
@@ -309,7 +357,7 @@ def build_html(res: dict) -> str:
 </table>
 <div class="cap">表3　容量扫描（综合因子，W=20，top5，含成本与参与率约束）。</div>
 
-<h3>3.4 2026 复盘：因子在共识顶点满仓，广度没有提前报警</h3>
+<h3>3.5 2026 复盘：因子在共识顶点满仓，广度没有提前报警</h3>
 <p>2026 年是极端分化的一年：半导体 6 月 <b>{mval('sh.512480', '2026-06')}%</b>、
 7 月 <b>{mval('sh.512480', '2026-07')}%</b>、10 月再 <b>{mval('sh.512480', '2026-10')}%</b>，
 全年 {yval('sh.512480')}%；通信 6 月 {mval('sh.515880', '2026-06')}%、
@@ -353,7 +401,7 @@ def build_html(res: dict) -> str:
 </table>
 <div class="cap">表4　2026 年三个关键日期的本地广度与新浪真实主力净流入（净流入率 = 净额/成交额）。</div>
 
-<h3>3.5 稳健性</h3>
+<h3>3.6 稳健性</h3>
 <p>子区间看，综合因子在 2020–2022 年化 {pct(sub_comp_22)}（基准 {pct(sub_bm_22)}），
 2023–2026 年化 {pct(sub_comp_26)}（基准 {pct(sub_bm_26)}）——超额主要来自后一段，
 与研报“2022–2023 年正超额”的稳定性并不相同。W=15/20/25 的综合因子年化为
@@ -439,7 +487,7 @@ GitHub 原生视图 <a class="url" href="{GITHUB_NB_URL}">{GITHUB_NB_URL}</a>。
 <ol class="ref">
 <li>华泰证券研究所，徐特、何康（2026-08-13）.《行业资金流向图应用于行业轮动》. 华泰证券金工深度研究.</li>
 <li>Chaikin, M. (1966). The Chaikin Money Flow indicator. <i>Stock Market Publishing</i>.</li>
-<li>数据：baostock ETF 日线接口；新浪财经 MoneyFlow 单只 ETF 资金流接口（抓取日期 {snap}）.</li>
+<li>数据：baostock ETF 日线接口；新浪财经 MoneyFlow 单只 ETF 与行业板块资金流接口（抓取日期 {snap}）.</li>
 <li>本项目代码与 Notebook：<a class="url" href="{REPO_URL}">{REPO_URL}</a>.</li>
 </ol>
 

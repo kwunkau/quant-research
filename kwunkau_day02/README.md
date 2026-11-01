@@ -12,6 +12,8 @@
 
 - 18 只行业/主题 ETF 日线（baostock，2020-01-02 至 2026-10-30，含成交额、换手率、涨跌幅）。
 - 新浪单只 ETF 主力资金流（2025-02-06 起），用于代理校验与 2026 案例。
+- 新浪行业板块资金流（48 个行业，2018-06 起，逐笔主动买卖口径），用于在研报同口径、同区间下复现原始因子与综合因子。
+- `data/raw/ind_flow_micro_snapshot.csv` 是行业流向图的逐日求解快照（全量约 20 分钟），`--refresh` 会重新求解。
 - 原始数据快照抓取日期：2026-10-31；`data/raw/*.csv` 已随仓库提交，可离线重跑。
 - `data/raw/flow_micro_snapshot.csv` 与 `flow_errors_snapshot.csv` 是资金流向图的求解快照，
   无本地缓存时 Notebook 直接读取，避免在 Colab 重跑 10–15 分钟；`--refresh` 会重新求解。
@@ -42,7 +44,7 @@ python run_all.py
 ## 在线查看
 
 - nbviewer（可用）：`https://nbviewer.org/urls/raw.githack.com/kwunkau/quant-research/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
-- nbviewer 直连（GitHub API 限流恢复后可用）：`https://nbviewer.org/github/kwunkau/quant-research/blob/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
+- nbviewer 直连（blob/HEAD 路由；blob/main 被 nbviewer 旧缓存卡住）：`https://nbviewer.org/github/kwunkau/quant-research/blob/HEAD/kwunkau_day02/output/kwunkau_day02_research.ipynb`
 - GitHub 原生 Notebook 视图（备用）：`https://github.com/kwunkau/quant-research/blob/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
 
 ## 说明

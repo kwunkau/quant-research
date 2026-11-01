@@ -361,6 +361,11 @@ def run() -> dict:
     err_by_year = errs.groupby("year").max_abs_err.agg(["count", "median", "max"]).reset_index()
     err_by_year.columns = ["年份", "天数", "中位最大误差", "最大误差"]
 
+    # 行业口径复现：新浪行业板块资金流（补 Wind 主动买卖金额的缺口）
+    from .industry import run as run_industry
+
+    industry = run_industry()
+
     results = {
         "meta": {
             "project": "kwunkau_day02",
@@ -395,6 +400,7 @@ def run() -> dict:
             "share_below_5permille": float((errs.max_abs_err < 0.005).mean()),
             "by_year": err_by_year.to_dict("records"),
         },
+        "industry": industry,
         "review_2026": {
             "ytd": ytd_df.to_dict("records"),
             "monthly": monthly.to_dict("records"),

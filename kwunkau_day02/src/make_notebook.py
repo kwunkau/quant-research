@@ -164,6 +164,17 @@ monthly = pd.DataFrame({"5000万综合因子": facts["strategy_monthly"],
 (monthly * 100).round(1)
 '''
 
+INDUSTRY = r'''
+ind = res["industry"]
+rows = [{"组合": k, "本地年化": ind["avg"][k]["cagr"], "本地回撤": ind["avg"][k]["mdd"],
+         "研报年化": res["report_ref"][k]["cagr"], "研报回撤": res["report_ref"][k]["mdd"]}
+        for k in ["base", "composite"]]
+rows.append({"组合": "benchmark", "本地年化": ind["benchmark"]["cagr"], "本地回撤": ind["benchmark"]["mdd"],
+             "研报年化": res["report_ref"]["benchmark"]["cagr"], "研报回撤": res["report_ref"]["benchmark"]["mdd"]})
+print(f"新浪 {ind['n_boards']} 个行业板块资金流，{ind['start']} ~ {ind['end']}，W=20–24 平均")
+pd.DataFrame(rows).round(4)
+'''
+
 CHARTS = r'''
 from src.charts import build_all
 from IPython.display import Image, display
@@ -198,6 +209,9 @@ lines = [
     f"5. 识别问题：N={res['meta']['problem_size']['n_industries']} 时 "
     f"{res['meta']['problem_size']['n_params']} 个参数对 "
     f"{res['meta']['problem_size']['n_equations']} 个方程，拟合误差小不能当作模型有效的证据。",
+    f"6. 行业口径（新浪 {res['industry']['n_boards']} 个行业主动买卖资金流，{res['industry']['start']}–{res['industry']['end']}）："
+    f"原始 {pct(res['industry']['avg']['base']['cagr'])} / 综合 {pct(res['industry']['avg']['composite']['cagr'])} / "
+    f"基准 {pct(res['industry']['benchmark']['cagr'])}，换回主动买卖数据仍未复现。",
 ]
 for line in lines:
     print(line)
@@ -233,6 +247,11 @@ def build() -> Path:
         nbf.v4.new_code_cell(CAPACITY),
         nbf.v4.new_markdown_cell("## 5. 2026 年复盘"),
         nbf.v4.new_code_cell(REVIEW),
+        nbf.v4.new_markdown_cell(
+            "## 5b. 行业口径复现（补数据）\n\n"
+            "用新浪行业板块的逐笔主动买卖资金流，在研报同区间、同规则下重做"
+            "（流向图逐日求解快照随仓库提交，见 `data/raw/ind_flow_micro_snapshot.csv`）。"),
+        nbf.v4.new_code_cell(INDUSTRY),
         nbf.v4.new_markdown_cell("## 6. 图表"),
         nbf.v4.new_code_cell(CHARTS),
         nbf.v4.new_markdown_cell("## 7. 结论（由 results.json 渲染，与报告一致）"),

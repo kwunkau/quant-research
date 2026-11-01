@@ -79,11 +79,11 @@ code { background: #F2F2F2; padding: 0 .6mm; font-size: 8.0pt; }
 <h3>2.1 数据与样本</h3>
 <p>数据为 18 只行业/主题 ETF 的日线（baostock，含成交额、换手率、涨跌幅），
 区间 2020-01-02–2026-10-30，共 1,653 个交易日、350 次周度调仓；
-新浪单只 ETF 主力资金流（2025-02 起）仅用于代理校验与 2026 案例。样本从 2020 年开始，
+新浪单只 ETF 主力资金流（2025-02 起）仅用于代理校验与 2026 案例；新浪行业板块资金流（2018-12 起）用于 3.2 节的行业口径复现。样本从 2020 年开始，
 因为满足“上市满 120 个交易日”的行业 ETF 直到 2020 年初才达到 11 只，
 更早的截面宽度不足。
 与研报有三处口径差异：标的从 40 个中信行业指数换成 18 只 ETF；时间从 2018-12 起换成 2020-01 起；
-数据从 Wind 主动买卖金额换成公开量价代理。<b>这三处差异是“绝对收益未复现”的主要原因，不应简单归因于方法失效。</b></p>
+数据从 Wind 主动买卖金额换成公开量价代理。3.2 节用行业板块主动买卖数据单独检验了“数据源”这一项。</p>
 
 <h3>2.2 主动净买入的公开数据代理</h3>
 <p>公开数据没有逐笔主动买卖，本文用 Chaikin 资金流乘数
@@ -139,7 +139,39 @@ code { background: #F2F2F2; padding: 0 .6mm; font-size: 8.0pt; }
 </table>
 <div class="cap">表1　业绩指标（2020-01-02–2026-10-30；超额 = 年化 − 等权基准年化；5000 万组合含成本与容量约束）。</div>
 
-<h3>3.2 执行层：5000 万扣成本后只剩 3%，超额转负</h3>
+<h3>3.2 补数据：用行业板块资金流回到研报口径</h3>
+<p>ETF 口径缺的是研报核心输入——<b>逐笔主动买卖金额</b>。新浪行业板块资金流按逐笔主动买卖划分净流入，
+与 Wind 口径同源（算法不同），且覆盖 2010 年至今，可以在研报同区间（2018-12-31–2026-07-31）、
+同层级（46 个新浪行业 vs 研报 40 个中信行业）、同规则（W=20–24 五组平均、
+周度 top5、次日调仓、不计费用）下重做一遍。成交额由“净流入额 / 净流入率”反推，
+买入额 =（成交额 + 净流入）/2，从而还原研报的“买入占比 − 卖出占比”。
+结果见表2：原始因子年化 1.5%（研报 21.97%），
+综合因子 8.1%（研报 22.63%），
+等权基准 10.4%（研报 9.31%）。
+原始因子跑输基准 8.9 pct，
+综合因子跑输基准 2.3 pct；
+综合较原始 +6.6 pct、最大回撤 -52.9% → -39.7%。
+W=20 周度 Rank IC：原始因子 -0.004（t=-0.34），
+综合因子 -0.034（t=-4.09）；
+四个微观维度中最大净流入 -0.040（t=-3.80）、
+广度 -0.048（t=-5.32）、
+净流出之和 0.045（t=4.28）。
+流向图逐日求解最大误差中位数 0.06‰、
+99.6% 的日期低于 5‰；三个示例日电子器件的净流入为正个数为
+10/45 → 9/45 → 33/45（研报电子 29/39→37/39→13/39）。
+<b>结论：换回主动买卖口径后，原始因子与“广度拐点”仍未复现</b>，“综合优于原始、回撤收窄”的方向仍成立，
+但两者都跑输等权基准；综合因子 IC 为负，
+与其跑输基准一致——相对原始因子的改善只是“少亏”，不是正向选股能力。
+因此 ETF 口径的差距<b>不能只归因于数据源</b>，行业划分（新浪 vs 中信）与主动买卖算法同样关键。
+板块数据没有流通市值，流向图中 S 用成交额占比代替。</p>
+
+<table>
+<tr><th>组合</th><th>年化（本地）</th><th>最大回撤（本地）</th><th>年化（研报）</th><th>最大回撤（研报）</th></tr>
+<tr><td>原始因子（W=20–24 平均）</td><td>1.5%</td><td>-52.9%</td><td>22.0%</td><td>-34.9%</td></tr><tr><td>综合因子（W=20–24 平均）</td><td>8.1%</td><td>-39.7%</td><td>22.6%</td><td>-22.3%</td></tr><tr><td>行业等权基准</td><td>10.4%</td><td>-29.0%</td><td>9.3%</td><td>-28.8%</td></tr>
+</table>
+<div class="cap">表2　行业口径复现（新浪 46 个行业板块资金流，2018-12-31–2026-07-31，W=20–24 五组平均，不计费用）。</div>
+
+<h3>3.3 执行层：5000 万扣成本后只剩 3%，超额转负</h3>
 <p>表1 第二组是 5000 万元、参与率≤5% ADV、含成本的模拟。基础因子年化 -0.1%、
 综合因子 3.0%、等权基准 4.6%；综合因子年化成本拖累
 2.5%，最大参与率 5.0%，
@@ -153,7 +185,7 @@ code { background: #F2F2F2; padding: 0 .6mm; font-size: 8.0pt; }
 不能拒绝“超额为零”。成本敏感性也不小：冲击 5bp 时年化 4.0%，
 20bp 时只有 1.0%——结论取决于冲击假设，不能只看一个点估计。</p>
 
-<h3>3.3 容量：不是“越大越差”，而是策略被约束改变了</h3>
+<h3>3.4 容量：不是“越大越差”，而是策略被约束改变了</h3>
 <p>表3 与图2 的容量曲线<b>不是单调下降</b>：1000 万 4.2%、
 3000 万 3.4%、5000 万 3.0%，
 随后 1 亿 3.2%、2 亿 3.7%、
@@ -173,7 +205,7 @@ code { background: #F2F2F2; padding: 0 .6mm; font-size: 8.0pt; }
 </table>
 <div class="cap">表3　容量扫描（综合因子，W=20，top5，含成本与参与率约束）。</div>
 
-<h3>3.4 2026 复盘：因子在共识顶点满仓，广度没有提前报警</h3>
+<h3>3.5 2026 复盘：因子在共识顶点满仓，广度没有提前报警</h3>
 <p>2026 年是极端分化的一年：半导体 6 月 <b>+39.1%</b>、
 7 月 <b>−34.0%</b>、10 月再 <b>−24.6%</b>，
 全年 −1.6%；通信 6 月 +13.0%、
@@ -217,7 +249,7 @@ code { background: #F2F2F2; padding: 0 .6mm; font-size: 8.0pt; }
 </table>
 <div class="cap">表4　2026 年三个关键日期的本地广度与新浪真实主力净流入（净流入率 = 净额/成交额）。</div>
 
-<h3>3.5 稳健性</h3>
+<h3>3.6 稳健性</h3>
 <p>子区间看，综合因子在 2020–2022 年化 9.5%（基准 9.4%），
 2023–2026 年化 6.7%（基准 1.2%）——超额主要来自后一段，
 与研报“2022–2023 年正超额”的稳定性并不相同。W=15/20/25 的综合因子年化为
@@ -296,14 +328,14 @@ Rank IC 从 0.023 升到 0.033。
 <a class="url" href="https://github.com/kwunkau/quant-research">https://github.com/kwunkau/quant-research</a>。</p>
 <p class="small" style="text-align:left;margin:.5mm 0 0">在线查看（nbviewer）：<br>
 <a class="url" href="https://nbviewer.org/urls/raw.githack.com/kwunkau/quant-research/main/kwunkau_day02/output/kwunkau_day02_research.ipynb">https://nbviewer.org/urls/raw.githack.com/kwunkau/quant-research/main/kwunkau_day02/output/kwunkau_day02_research.ipynb</a><br>
-备选：nbviewer 直连 <a class="url" href="https://nbviewer.org/github/kwunkau/quant-research/blob/main/kwunkau_day02/output/kwunkau_day02_research.ipynb">https://nbviewer.org/github/kwunkau/quant-research/blob/main/kwunkau_day02/output/kwunkau_day02_research.ipynb</a>；
+备选：nbviewer 直连 <a class="url" href="https://nbviewer.org/github/kwunkau/quant-research/blob/HEAD/kwunkau_day02/output/kwunkau_day02_research.ipynb">https://nbviewer.org/github/kwunkau/quant-research/blob/HEAD/kwunkau_day02/output/kwunkau_day02_research.ipynb</a>；
 GitHub 原生视图 <a class="url" href="https://github.com/kwunkau/quant-research/blob/main/kwunkau_day02/output/kwunkau_day02_research.ipynb">https://github.com/kwunkau/quant-research/blob/main/kwunkau_day02/output/kwunkau_day02_research.ipynb</a>。</p>
 
 <h2>参考文献</h2>
 <ol class="ref">
 <li>华泰证券研究所，徐特、何康（2026-08-13）.《行业资金流向图应用于行业轮动》. 华泰证券金工深度研究.</li>
 <li>Chaikin, M. (1966). The Chaikin Money Flow indicator. <i>Stock Market Publishing</i>.</li>
-<li>数据：baostock ETF 日线接口；新浪财经 MoneyFlow 单只 ETF 资金流接口（抓取日期 2026-10-31）.</li>
+<li>数据：baostock ETF 日线接口；新浪财经 MoneyFlow 单只 ETF 与行业板块资金流接口（抓取日期 2026-10-31）.</li>
 <li>本项目代码与 Notebook：<a class="url" href="https://github.com/kwunkau/quant-research">https://github.com/kwunkau/quant-research</a>.</li>
 </ol>
 

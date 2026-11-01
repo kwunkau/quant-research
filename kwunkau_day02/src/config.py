@@ -70,6 +70,14 @@ COMMISSION_GRID = [0.5, 1.0, 2.0]
 # 研报 2026 案例的三个示例日（流向图、广度对照、复盘图共用）
 KEY_DATES = ["2026-06-24", "2026-06-30", "2026-07-06"]
 
+# 行业口径复现（新浪行业板块资金流，补 Wind 主动买卖金额的缺口）
+IND_START = "2018-12-31"          # 与研报回测起点一致
+IND_FETCH_START = "2018-06-01"    # 多留半年做 W 日平滑预热
+IND_REPORT_END = "2026-07-31"     # 研报回测终点，用于同区间对照
+IND_W_GRID = [20, 21, 22, 23, 24]  # 研报“W 取 20 至 24”的 5 组回测
+IND_SEMI = "电子器件"              # 与研报“电子”最接近的新浪行业
+IND_TELECOM = "电子信息"           # 新浪口径无独立“通信设备”，用电子信息对照
+
 # 新浪单只 ETF 资金流覆盖起点
 FLOW_START = "2025-02-06"
 
@@ -87,10 +95,13 @@ NB_PATH = f"{PROJECT_ID}/output/{PROJECT_ID}_research.ipynb"
 REPO_URL = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}"
 GITHUB_NB_URL = f"{REPO_URL}/blob/{GITHUB_BRANCH}/{NB_PATH}"
 
-# nbviewer 的 GitHub 直连在提交时遇到 API 限流（503/缓存 404），改用 /urls/ + CDN 代理；
-# 限流恢复后 NBVIEWER_CANONICAL 也可用。
+# nbviewer 的 /github/<user>/<repo>/blob/main/ 路由会命中 nbviewer 服务端过期的分支缓存
+# （返回 “not found among N files”），同一文件用 blob/HEAD/ 或提交号访问正常。
+# 主链接走 /urls/ + CDN（不经 GitHub API），备选走 blob/HEAD/；Colab 链接可直接运行。
 NBVIEWER_CANONICAL = (f"https://nbviewer.org/github/{GITHUB_USER}/{GITHUB_REPO}"
-                      f"/blob/{GITHUB_BRANCH}/{NB_PATH}")
+                      f"/blob/HEAD/{NB_PATH}")
+COLAB_URL = (f"https://colab.research.google.com/github/{GITHUB_USER}/{GITHUB_REPO}"
+             f"/blob/{GITHUB_BRANCH}/{NB_PATH}")
 NBVIEWER_URL = (f"https://nbviewer.org/urls/raw.githack.com/{GITHUB_USER}/{GITHUB_REPO}"
                 f"/{GITHUB_BRANCH}/{NB_PATH}")
 

@@ -22,6 +22,7 @@ from .config import (
     ETF_UNIVERSE,
     FETCH_START,
     FLOW_START,
+    IND_FETCH_START,
     MIN_HISTORY_DAYS,
     ensure_dirs,
 )
@@ -195,9 +196,80 @@ def fetch_sina_flow(force: bool = False) -> pd.DataFrame:
     return out
 
 
+# ---------------------------------------------------------------- 新浪行业板块资金流
+
+SINA_BOARD_BASE = ("https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/"
+                   + "Money" + "Flow.")
+
+
+def _sina_get(api: str, params: dict, retries: int = 6):
+    last_err: Exception | None = None
+    for attempt in range(retries):
+        try:
+            resp = requests.get(SINA_BOARD_BASE + api, params=params,
+                                headers=SINA_HEADERS, timeout=30)
+            resp.raise_for_status()
+            raw = json.loads(resp.text)
+            if not isinstance(raw, list) or not raw:
+                raise ValueError("返回为空或格式异常")
+            return raw
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            time.sleep(1.5 * (attempt + 1))
+    raise RuntimeError(f"新浪行业资金流接口 {api} 抓取失败") from last_err
+
+
+def fetch_sina_boards(force: bool = False) -> pd.DataFrame:
+    """新浪行业板块日度资金流（2010 年起）：净流入额、净流入率、主力净流入、平均涨跌幅。
+
+    成交额由 净流入额 / 净流入率 反推；买入额 = (成交额+净流入)/2，卖出额 = (成交额−净流入)/2，
+    用于还原研报的“主动买入占比 − 主动卖出占比”。
+    """
+    ensure_dirs()
+    cache = DATA_RAW / "sina_board_flow.csv"
+    if cache.exists() and not force:
+        return pd.read_csv(cache, parse_dates=["date"])
+
+    boards = _sina_get("ssl_bkzj_bk", {"page": 1, "num": 200, "sort": "netamount",
+                                       "asc": 0, "fenlei": 0})
+    frames = []
+    for b in boards:
+        rows = _sina_get("ssl_bkzj_zjlrqs", {"page": 1, "num": 6000, "sort": "opendate",
+                                             "asc": 1, "bankuai": b["category"]})
+        df = pd.DataFrame(rows)
+        df.insert(0, "board", b["name"])
+        frames.append(df)
+        time.sleep(0.3)
+    df = pd.concat(frames, ignore_index=True)
+    df["date"] = pd.to_datetime(df["opendate"])
+    for col in ["avg_changeratio", "netamount", "ratioamount", "r0_net"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df[df["date"] >= pd.Timestamp(IND_FETCH_START)]
+    df["amount"] = (df["netamount"] / df["ratioamount"]).where(df["ratioamount"].abs() > 1e-6)
+    df = df.rename(columns={"avg_changeratio": "pct"})
+    df = (df[["board", "date", "pct", "amount", "netamount", "r0_net"]]
+          .sort_values(["board", "date"]).reset_index(drop=True))
+    assert not df.duplicated(["board", "date"]).any(), "存在重复的 board+date"
+    if df.board.nunique() < 30:
+        raise RuntimeError(f"行业板块数量异常：{df.board.nunique()}")
+
+    df.to_csv(cache, index=False, encoding="utf-8-sig", float_format="%.6g")
+    meta = {
+        "source": "新浪财经 MoneyFlow 行业板块资金流接口",
+        "fetched_at": datetime.now().isoformat(timespec="seconds"),
+        "start": str(df.date.min().date()), "end": str(df.date.max().date()),
+        "n_rows": int(len(df)), "n_boards": int(df.board.nunique()),
+    }
+    (DATA_RAW / "sina_board_flow.meta.json").write_text(
+        json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    return df
+
+
 def build_raw(force: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
     daily = fetch_etf_daily(force=force)
     flow = fetch_sina_flow(force=force)
+    boards = fetch_sina_boards(force=force)
+    print(f"[fetch] 行业板块 {boards.board.nunique()} 个，{len(boards):,} 行")
     print(f"[fetch] ETF 日线 {len(daily):,} 行，{daily.code.nunique()} 只，"
           f"{daily.date.min():%Y-%m-%d}~{daily.date.max():%Y-%m-%d}")
     print(f"[fetch] 资金流   {len(flow):,} 行，{flow.code.nunique()} 只，"

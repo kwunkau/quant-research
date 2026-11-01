@@ -116,9 +116,13 @@ GITHUB_BRANCH = "main"
 NB_PATH = f"{PROJECT_ID}/output/{PROJECT_ID}_research.ipynb"
 REPO_URL = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}"
 GITHUB_NB_URL = f"{REPO_URL}/blob/{GITHUB_BRANCH}/{NB_PATH}"
-# nbviewer 的 /github/ 路由常因 GitHub API 限流返回 503/404，/urls/ + CDN 更稳定；两条都写进报告
+# nbviewer 的 /github/<user>/<repo>/blob/main/ 路由会命中 nbviewer 服务端过期的分支缓存
+# （返回 “not found among N files”），同一文件用 blob/HEAD/ 或提交号访问正常。
+# 主链接走 /urls/ + CDN（不经 GitHub API），备选走 blob/HEAD/；Colab 链接可直接运行。
 NBVIEWER_CANONICAL = (f"https://nbviewer.org/github/{GITHUB_USER}/{GITHUB_REPO}"
-                      f"/blob/{GITHUB_BRANCH}/{NB_PATH}")
+                      f"/blob/HEAD/{NB_PATH}")
+COLAB_URL = (f"https://colab.research.google.com/github/{GITHUB_USER}/{GITHUB_REPO}"
+             f"/blob/{GITHUB_BRANCH}/{NB_PATH}")
 NBVIEWER_URL = (f"https://nbviewer.org/urls/raw.githack.com/{GITHUB_USER}/{GITHUB_REPO}"
                 f"/{GITHUB_BRANCH}/{NB_PATH}")
 

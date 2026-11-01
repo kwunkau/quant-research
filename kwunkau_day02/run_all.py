@@ -57,6 +57,12 @@ def main() -> None:
     fm = run_flowmap(force=args.refresh)
     print(f"[3/8] 资金流向图完成  {len(fm['errors'])} 日  {time.time() - t0:.1f}s")
 
+    if args.refresh:
+        from src.industry import build_panels, solve_micro
+
+        solve_micro(build_panels(), force=True)
+        print(f"[3/8] 行业流向图重算完成  {time.time() - t0:.1f}s")
+
     from src.analysis import run as run_analysis
 
     res = run_analysis()
