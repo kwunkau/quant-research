@@ -43,7 +43,8 @@ python run_all.py
 
 ## 在线查看
 
-- nbviewer（可用）：`https://nbviewer.org/urls/raw.githack.com/kwunkau/quant-research/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
+- nbviewer（主链接，锁定提交）：`https://nbviewer.org/urls/rawcdn.githack.com/kwunkau/quant-research/85113ad8bf326f4f4d2669e2419bac1a13d9658f/kwunkau_day02/output/kwunkau_day02_research.ipynb`
+- nbviewer（跟随 main 最新版）：`https://nbviewer.org/urls/raw.githack.com/kwunkau/quant-research/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
 - nbviewer 直连（blob/HEAD 路由；blob/main 被 nbviewer 旧缓存卡住）：`https://nbviewer.org/github/kwunkau/quant-research/blob/HEAD/kwunkau_day02/output/kwunkau_day02_research.ipynb`
 - GitHub 原生 Notebook 视图（备用）：`https://github.com/kwunkau/quant-research/blob/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
 

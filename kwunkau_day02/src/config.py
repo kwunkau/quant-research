@@ -1,5 +1,6 @@
 """kwunkau_day02 全局配置：路径、ETF 池、区间、回测与成本参数。"""
 
+import subprocess
 from pathlib import Path
 
 PROJECT_ID = "kwunkau_day02"
@@ -95,15 +96,32 @@ NB_PATH = f"{PROJECT_ID}/output/{PROJECT_ID}_research.ipynb"
 REPO_URL = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}"
 GITHUB_NB_URL = f"{REPO_URL}/blob/{GITHUB_BRANCH}/{NB_PATH}"
 
-# nbviewer 的 /github/<user>/<repo>/blob/main/ 路由会命中 nbviewer 服务端过期的分支缓存
-# （返回 “not found among N files”），同一文件用 blob/HEAD/ 或提交号访问正常。
-# 主链接走 /urls/ + CDN（不经 GitHub API），备选走 blob/HEAD/；Colab 链接可直接运行。
+
+
+def _nb_commit() -> str | None:
+    """最近一次提交 Notebook 的 commit SHA；无 git / 未提交时返回 None（回退到分支链接）。"""
+    try:
+        out = subprocess.run(
+            ["git", "log", "-1", "--format=%H", "--", f"output/{PROJECT_ID}_research.ipynb"],
+            cwd=ROOT, capture_output=True, text=True, timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.strip() or None
+
+
+# nbviewer 的 /github/ 路由依赖 GitHub API：分支目录会被服务端旧缓存卡住（404 “not found
+# among N files”），API 限流时返回 503。主链接走 /urls/ + rawcdn.githack（不经 GitHub API），
+# 并锁定到 Notebook 所在提交，内容不随后续推送变化；/github/ 直连与 GitHub 原生视图作备选。
+NB_COMMIT = _nb_commit()
+NBVIEWER_BRANCH_URL = (f"https://nbviewer.org/urls/raw.githack.com/{GITHUB_USER}/{GITHUB_REPO}"
+                       f"/{GITHUB_BRANCH}/{NB_PATH}")
+NBVIEWER_URL = (f"https://nbviewer.org/urls/rawcdn.githack.com/{GITHUB_USER}/{GITHUB_REPO}"
+                f"/{NB_COMMIT}/{NB_PATH}" if NB_COMMIT else NBVIEWER_BRANCH_URL)
 NBVIEWER_CANONICAL = (f"https://nbviewer.org/github/{GITHUB_USER}/{GITHUB_REPO}"
                       f"/blob/HEAD/{NB_PATH}")
 COLAB_URL = (f"https://colab.research.google.com/github/{GITHUB_USER}/{GITHUB_REPO}"
              f"/blob/{GITHUB_BRANCH}/{NB_PATH}")
-NBVIEWER_URL = (f"https://nbviewer.org/urls/raw.githack.com/{GITHUB_USER}/{GITHUB_REPO}"
-                f"/{GITHUB_BRANCH}/{NB_PATH}")
 
 # 中文字体：按顺序尝试（Windows / macOS / Colab 安装的文泉驿 / Noto），都不存在时按字体名回退
 FONT_FILES = [
