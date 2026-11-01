@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .config import ADV_WINDOW, DATA_PROCESSED, MIN_HISTORY_DAYS, ensure_dirs
+from .config import ADV_WINDOW, MIN_HISTORY_DAYS, W_GRID, ensure_dirs
 
 PANEL_KEYS = ["open", "high", "low", "close", "volume", "amount", "turn", "pct"]
 
@@ -67,6 +67,9 @@ def build_features(daily: pd.DataFrame) -> dict:
 
     adv = amount.rolling(ADV_WINDOW, min_periods=max(5, ADV_WINDOW // 2)).mean()
 
+    # 复权价格指数：由涨跌幅累乘，消除份额折算造成的价格跳空（IC 前向收益用它）
+    adj = (1.0 + pct.fillna(0.0)).cumprod().where(p["close"].ffill().notna())
+
     p.update({
         "mask": mask,
         "excess": excess,
@@ -75,6 +78,7 @@ def build_features(daily: pd.DataFrame) -> dict:
         "mfm": mfm,
         "q_share": q_share,
         "adv": adv,
+        "adj": adj,
         "n_obs": n_obs,
     })
     return p
@@ -117,13 +121,13 @@ def cross_section(feats: dict, date: pd.Timestamp) -> dict | None:
 
 
 def build_dataset(daily: pd.DataFrame | None = None) -> dict:
-    """读取/构建特征并缓存基础面板（宽表，parquet 不便离线时用 pickle）。"""
+    """构建全部日频特征与 W_GRID 下的滚动基础因子（内存计算，不落盘）。"""
     ensure_dirs()
     if daily is None:
         from .fetch_data import fetch_etf_daily
 
         daily = fetch_etf_daily()
     feats = build_features(daily)
-    for w in (15, 20, 25):
+    for w in W_GRID:
         feats = add_rolling_factors(feats, w)
     return feats

@@ -81,6 +81,19 @@ def build_html(res: dict) -> str:
     meta = res["meta"]
     ref = res["report_ref"]
 
+    facts = rv["facts"]
+    ps, psr = meta["problem_size"], meta["problem_size_report"]
+    cc = p["cap_only_composite_50m"]
+    capacity_gap = cc["cagr"] - gc["cagr"]      # 只加容量约束、不计成本
+    cost_gap = nc["cagr"] - cc["cagr"]          # 再计成本
+    snap = meta["snapshot_date"]
+
+    def names(items, n: int | None = None) -> str:
+        return "、".join(x["name"].replace("ETF", "") for x in items[:n])
+
+    def smon(series: str, month: str) -> str:
+        return f"{facts[series][month] * 100:+.1f}%".replace("-", "−")
+
     mon = pd.DataFrame(rv["monthly"]).set_index("code")
     ytd_map = ytd.set_index("code")["ytd"]
 
@@ -163,7 +176,7 @@ def build_html(res: dict) -> str:
 <b>摘要：</b>本文用 {meta['n_etfs']} 只行业/主题 ETF 的公开日线，复现华泰证券《行业资金流向图应用于行业轮动》
 的两层构造：主动净买入因子（公开数据下退化为 W=20 资金流强度）与曼宁公式资金流向图（五因子合成）。
 {meta['start']}–{meta['end']} 上，理论组合年化 <b>{pct(gb['cagr'])}</b>（基础）、
-<b>{pct(gc['cagr'])}</b>（综合），等权基准 {pct(bm['cagr'])}；研报同期为 21.97% / 22.63% / 9.31%。
+<b>{pct(gc['cagr'])}</b>（综合），等权基准 {pct(bm['cagr'])}；研报同期为 {pct(ref['base']['cagr'],2)} / {pct(ref['composite']['cagr'],2)} / {pct(ref['benchmark']['cagr'],2)}。
 <b>绝对收益没有复现</b>，但“综合优于基础”的方向复现：综合因子较基础因子 {pp(gc['cagr']-gb['cagr'])}，
 最大回撤从 {pct(gb['mdd'])} 改善到 {pct(gc['mdd'])}（{abs(gc['mdd']-gb['mdd'])*100:.1f} pct），
 与研报“收益小升、回撤大降”的改进模式一致。5000 万元、参与率≤5% ADV、含佣金/价差/冲击后，
@@ -172,7 +185,7 @@ def build_html(res: dict) -> str:
 <b>{pp(nc['excess_vs_benchmark'])}</b>。研报的“广度拐点”在 ETF 口径下<b>没有复现</b>：
 本地半导体净流入为正比例在三个示例日为
 {key.iloc[0]['semi_breadth']*100:.0f}% / {key.iloc[1]['semi_breadth']*100:.0f}% /
-{key.iloc[2]['semi_breadth']*100:.0f}%，与研报的 29/39→37/39→13/39 方向不同，
+{key.iloc[2]['semi_breadth']*100:.0f}%，与研报的 {ref['semi_breadth_path']} 方向不同，
 与真实 ETF 资金流的截面相关也只有 {key.iloc[0]['corr_breadth_flow']:+.2f} /
 {key.iloc[1]['corr_breadth_flow']:+.2f} / {key.iloc[2]['corr_breadth_flow']:+.2f}。
 尽管如此，6 月 30 日因子仍满仓 AI 硬件，7 月半导体 {mval('sh.512480', '2026-07')}%、
@@ -203,7 +216,8 @@ def build_html(res: dict) -> str:
 <p>数据为 {meta['n_etfs']} 只行业/主题 ETF 的日线（baostock，含成交额、换手率、涨跌幅），
 区间 {meta['start']}–{meta['end']}，共 {meta['n_days']:,} 个交易日、{meta['n_rebalances']} 次周度调仓；
 新浪单只 ETF 主力资金流（2025-02 起）仅用于代理校验与 2026 案例。样本从 2020 年开始，
-因为 2019 年下半年满足“上市满 120 个交易日”的行业 ETF 不足 11 只，更早的截面宽度不足。
+因为满足“上市满 120 个交易日”的行业 ETF 直到 2020 年初才达到 {meta['eligible_at_start']} 只，
+更早的截面宽度不足。
 与研报有三处口径差异：标的从 40 个中信行业指数换成 {meta['n_etfs']} 只 ETF；时间从 2018-12 起换成 2020-01 起；
 数据从 Wind 主动买卖金额换成公开量价代理。<b>这三处差异是“绝对收益未复现”的主要原因，不应简单归因于方法失效。</b></p>
 
@@ -230,7 +244,7 @@ def build_html(res: dict) -> str:
 <p>每周最后一个交易日收盘算因子，次一交易日按 VWAP（成交额/成交量）成交，前 5 名等权，100 份整数手。
 成本单边 = 佣金 1bp + 半价差 2bp + 冲击 <code>10bp×sqrt(参与率/5%)</code>；
 参与率 = 成交额 / ADV20，上限 5%，超出则缩减成交并保留现金。
-份额折算日用“价格比 / (1+涨跌幅)”识别并同步调整份额（2020 年以来共 13 次，含 2026-07 的 1:2 折算）。
+份额折算日用“价格比 / (1+涨跌幅)”识别并同步调整份额（样本期内共 {meta['n_split_events']} 次，含 2026-07 的 1 拆 2）。
 容量扫描 1000 万–5 亿元；参数敏感性覆盖 W=15/20/25 与 top3/5/8；成本敏感性覆盖冲击 5/10/20bp、
 佣金 0.5/1/2bp，全部报告、不择优。</p>
 
@@ -238,19 +252,20 @@ def build_html(res: dict) -> str:
 
 <h3>3.1 信号层：改进方向复现，绝对收益没有</h3>
 <p>表1 第一组是未计成本与容量的理论组合。基础因子年化 {pct(gb['cagr'])}、综合因子
-{pct(gc['cagr'])}、等权基准 {pct(bm['cagr'])}；研报的 21.97%/22.63% 与 9.31% 没有出现，
-综合因子超额 {pp(gc['excess_vs_benchmark'])}，远小于研报的 13.32 pct。
+{pct(gc['cagr'])}、等权基准 {pct(bm['cagr'])}；研报的 {pct(ref['base']['cagr'],2)}/{pct(ref['composite']['cagr'],2)} 与 {pct(ref['benchmark']['cagr'],2)} 没有出现，
+综合因子超额 {pp(gc['excess_vs_benchmark'])}，远小于研报的 {ref['composite']['excess']*100:.2f} pct。
 但<b>改进的方向复现了</b>：综合因子较基础因子 {pp(gc['cagr']-gb['cagr'])}，
 最大回撤从 {pct(gb['mdd'])} 收窄到 {pct(gc['mdd'])}，改善
-{abs(gc['mdd']-gb['mdd'])*100:.1f} pct，甚至大于研报的 12.59 pct。
-更有意思的是，综合因子的 Rank IC 反而低于基础因子（{ic['composite']['mean_ic']:.3f} vs
-{ic['base']['mean_ic']:.3f}），说明改进<b>不是来自截面排序能力，而是来自风险结构</b>：
-四个低相关弱因子把组合从“押注单一资金流强度”变成“多维度投票”，收益略升、回撤大降。
-四个微观因子的 IC 都很弱：净流出之和 {ic['out_sum']['mean_ic']:.3f}（t={ic['out_sum']['ic_t']:.2f}）
-是唯一略正的一项，最大净流入 {ic['max_in']['mean_ic']:.3f}（t={ic['max_in']['ic_t']:.2f}）、
+{abs(gc['mdd']-gb['mdd'])*100:.1f} pct，甚至大于研报的 {(ref['composite']['mdd']-ref['base']['mdd'])*100:.2f} pct。
+截面排序上也有同样的改进：综合因子周度 Rank IC {ic['composite']['mean_ic']:.3f}
+（t={ic['composite']['ic_t']:.2f}），高于基础因子的 {ic['base']['mean_ic']:.3f}
+（t={ic['base']['ic_t']:.2f}）；但 IC&gt;0 的周占比只有 {ic['composite']['positive_share']*100:.0f}%，
+信号很弱。四个微观因子：最大净流入 {ic['max_in']['mean_ic']:.3f}（t={ic['max_in']['ic_t']:.2f}）、
 广度 {ic['breadth']['mean_ic']:.3f}（t={ic['breadth']['ic_t']:.2f}）、
-外部净流入 {ic['external']['mean_ic']:.3f}（t={ic['external']['ic_t']:.2f}）都接近零或为负。
-这与研报“四个弱因子、低相关、合成后改善”的描述一致，但“弱”到在 18 只 ETF 上无法单独使用。</p>
+外部净流入 {ic['external']['mean_ic']:.3f}（t={ic['external']['ic_t']:.2f}）为正，
+<b>净流出之和 {ic['out_sum']['mean_ic']:.3f}（t={ic['out_sum']['ic_t']:.2f}）方向与研报相反</b>
+（研报认为“负得越少越好”）。这与研报“四个弱因子、低相关、合成后改善”的描述基本一致，
+但每个分量都弱到在 18 只 ETF 上无法单独使用。</p>
 
 {fig('fig1_nav.png', '图1　理论组合（A）与 5000 万元模拟（B）的累计净值。综合因子复现了“收益略升、回撤大降”的方向，但绝对收益远低于研报。')}
 
@@ -266,8 +281,9 @@ def build_html(res: dict) -> str:
 {pct(nc['cost_drag_annual'])}，最大参与率 {nc['max_participation']*100:.1f}%，
 受限天数 {nc['binding_days']}。50,000,000 元本金期末变为
 <b>{nc['final_value']/1e4:,.0f} 万元</b>（净收益 {nc['net_profit']/1e4:+,.0f} 万元），
-最大回撤 {pct(nc['mdd'])}。理论组合 {pct(gc['cagr'])} 到净结果 {pct(nc['cagr'])} 的 5.1 pct 差距，
-约一半来自成本（{pct(nc['cost_drag_annual'])}），另一半来自容量约束下的“想买买不到、想卖卖不掉”。
+最大回撤 {pct(nc['mdd'])}。理论组合 {pct(gc['cagr'])} 到净结果 {pct(nc['cagr'])} 的 {abs(nc['cagr']-gc['cagr'])*100:.1f} pct 差距可拆成两段：
+只加 5% ADV 与整数手约束、不计成本时年化 {pct(cc['cagr'])}（{pp(capacity_gap)}，“想买买不到、想卖卖不掉”），
+再计佣金/价差/冲击后 {pct(nc['cagr'])}（{pp(cost_gap)}）。
 5000 万组合的周频超额 bootstrap 95% 区间为
 [{boot_lo*100:+.1f}, {boot_hi*100:+.1f}] pct/年，HAC t = {boot['hac_t']:.2f}，
 不能拒绝“超额为零”。成本敏感性也不小：冲击 5bp 时年化 {pct(cost_max)}，
@@ -300,11 +316,12 @@ def build_html(res: dict) -> str:
 7 月 {mval('sh.515880', '2026-07')}%、10 月 {mval('sh.515880', '2026-10')}%，
 全年 {yval('sh.515880')}%；同期煤炭 {yval('sh.515220')}%、银行 {yval('sh.512800')}%、
 电力 {yval('sz.159611')}% 为正收益，游戏 {yval('sz.159869')}%、新能源 {yval('sh.516160')}%、
-新能源车 {yval('sh.515030')}% 垫底。6 月 30 日，基础因子与综合因子的前 5 名都是半导体、通信、光伏、
-新能源/新能源车、军工——<b>因子在 AI 硬件的共识顶点满仓</b>，7 月的
-{mval('sh.512480', '2026-07')}% 直接打在组合上。
-5000 万净组合 7 月 −15.1%（基准 −4.1%），10 月 −1.7%（基准 −8.8%）：7 月被 AI 硬件反噬，
-9 月底已轮换到地产、电力、消费，反而避开了 10 月的第二波下跌。
+新能源车 {yval('sh.515030')}% 垫底。6 月 30 日，综合因子前 5 名为{names(facts['top5_composite_0630'])}，
+基础因子为{names(facts['top5_base_0630'])}；5000 万组合当日实际持有{names(facts['holdings_net_0630'])}——
+<b>因子在 AI 硬件的共识顶点满仓</b>，7 月半导体的 {mval('sh.512480', '2026-07')}% 直接打在组合上。
+5000 万净组合 7 月 {smon('strategy_monthly', '2026-07')}（基准 {smon('benchmark_monthly', '2026-07')}），
+10 月 {smon('strategy_monthly', '2026-10')}（基准 {smon('benchmark_monthly', '2026-10')}）：7 月被 AI 硬件反噬，
+9 月底已轮换到{names(facts['holdings_net_0930'])}，避开了 10 月的第二波下跌。
 这不是“因子失效”，而是动量因子在共识顶点天然最脆弱：它买的正是“过去最强”，
 而最强的那一刻往往也是边际资金耗尽的那一刻。</p>
 
@@ -314,16 +331,17 @@ def build_html(res: dict) -> str:
 <b>研报的“缩圈→共识→松动”在 ETF 上没有复现</b>：本地半导体的广度是
 {key.iloc[0]['semi_breadth']*100:.0f}% / {key.iloc[1]['semi_breadth']*100:.0f}% /
 {key.iloc[2]['semi_breadth']*100:.0f}%，在 6 月 24 日最高、6 月 30 日最低，与研报
-29/39→37/39→13/39 的“先升后降”方向相反；通信是
+{ref['semi_breadth_path']} 的“先升后降”方向相反；通信是
 {key.iloc[0]['telecom_breadth']*100:.0f}% / {key.iloc[1]['telecom_breadth']*100:.0f}% /
 {key.iloc[2]['telecom_breadth']*100:.0f}%，也没有单调变化。
 广度与真实 ETF 主力净流入的截面相关为 {key.iloc[0]['corr_breadth_flow']:+.2f} /
 {key.iloc[1]['corr_breadth_flow']:+.2f} / {key.iloc[2]['corr_breadth_flow']:+.2f}，
 没有稳定的正相关。这意味着：在 18 只 ETF、量价代理、欠定求解这三个条件下，
 <b>“广度拐点”不是一个可靠的 timing 信号</b>。</p>
-<p>更值得记录的是口径差异：研报 2026-06-24 称通信设备“净流入为正比例仅 9/39”，
+<p>更值得记录的是口径差异：研报 2026-06-24 称通信设备“净流入为正比例仅 {ref['telecom_breadth_0624']}”，
 但同日通信 ETF 的新浪主力净流入是 <b>{key.iloc[0]['telecom_flow']*100:+.1f}%</b>（净流入率），
-6 月 26 日更高达 +17.5%。两者不矛盾：研报测的是<b>行业间相对流向</b>，ETF 资金流测的是
+{pd.Timestamp(facts['telecom_flow_peak_late_june']['date']).month} 月 {pd.Timestamp(facts['telecom_flow_peak_late_june']['date']).day} 日更高达
+{facts['telecom_flow_peak_late_june']['ratio']*100:+.1f}%。两者不矛盾：研报测的是<b>行业间相对流向</b>，ETF 资金流测的是
 <b>单只产品的绝对进出</b>。同一日、同一条主线，两个“资金流”可以给出相反结论。
 做策略前必须先定义清楚：你要的是“相对谁”的资金流。</p>
 
@@ -357,12 +375,13 @@ top3/5/8 为
 <li><b>把不可观测量变成可估计量。</b>行业间资金流无法直接观测，研报用河网/曼宁公式建立
 “流量—超额收益”关系，再用质量守恒和欠定方程求解。这套“物理类比 + 约束 + 正则化”的思路，
 可以迁移到期现基差、ETF 申赎、跨境资金等任何“看得见结果、看不见流量”的场景。</li>
-<li><b>弱因子合成的价值在风险结构，不在 IC。</b>我们的综合因子 Rank IC 反而低于基础因子，
-但收益 +{ (gc['cagr']-gb['cagr'])*100:.1f} pct、最大回撤改善
-{abs(gc['mdd']-gb['mdd'])*100:.1f} pct。改进来自四个低相关弱因子的“多维度投票”，
-不是更强的截面排序。这个区分很重要：如果只盯 IC，会错过真正的改进。</li>
+<li><b>弱因子合成，改进主要体现在回撤。</b>综合因子较基础因子收益
+{pp(gc['cagr']-gb['cagr'])}、最大回撤改善 {abs(gc['mdd']-gb['mdd'])*100:.1f} pct，
+Rank IC 从 {ic['base']['mean_ic']:.3f} 升到 {ic['composite']['mean_ic']:.3f}。
+四个低相关弱因子把组合从“押注单一资金流强度”变成“多维度投票”；
+但其中“净流出之和”在 ETF 上方向相反，等权合成时它实际在拖后腿——合成前应先逐个检验符号。</li>
 <li><b>指标的口径决定结论，跨口径验证是必修课。</b>研报的“净流入为正比例”在 ETF 上没有复现，
-与真实 ETF 资金流的相关性也不稳定；06-24 通信的“9/39 vs +6.9%”是最具体的反例。
+与真实 ETF 资金流的相关性也不稳定；06-24 通信的“{ref['telecom_breadth_0624']} vs {key.iloc[0]['telecom_flow']*100:+.1f}%”是最具体的反例。
 我们学到的是：不要直接搬用一个“看起来有道理”的指标，先在目标 universe 上验证它的符号与稳定性。</li>
 <li><b>可视化是研究工具，不是装饰。</b>流向图把“缩圈/共识/松动”这种主观判断变成可比较的图形；
 弦图、网络图、时间轴动画都是自然的延展。图3 的三连图，比任何一段文字都更直观——
@@ -370,8 +389,9 @@ top3/5/8 为
 </ol>
 
 <h3>4.2 对研报的三点批判</h3>
-<p><b>第一，识别问题。</b>N=18 时未知量约 173 个（γ 153 + α 19 + β 2），而独立方程只有 19 个；
-研报 N=40 时更悬殊（约 824 个未知量对 82 个方程）。因此“建模误差 &lt;5‰”几乎是参数数量的必然结果，
+<p><b>第一，识别问题。</b>N={ps['n_industries']} 时消去守恒约束后仍有 {ps['n_params']} 个自由参数
+（γ {ps['n_gamma']} + α {ps['n_alpha']} + β 2），而残差方程只有 {ps['n_equations']} 个；
+研报 N={psr['n_industries']} 时更悬殊（{psr['n_params']} 个参数对 {psr['n_equations']} 个方程）。因此“建模误差 &lt;5‰”几乎是参数数量的必然结果，
 <b>不能当作模型有效的证据</b>。最小二范数解是一个假设（能量最低），不是市场事实；
 换初值、换正则化，流向图会变。我们建议报告“流向的置信带”，而不是单点图。</p>
 <p><b>第二，口径问题。</b>“行业间相对流向”与“单只 ETF 绝对流向”不是同一个东西。
@@ -404,8 +424,8 @@ top3/5/8 为
 <p class="small" style="text-align:left">环境：Python 3.12+ 虚拟环境，依赖见 <code>requirements.txt</code>。
 复现：<code>python -m venv .venv</code> → <code>pip install -r requirements.txt</code> → <code>python run_all.py</code>
 （抓数→特征→流向图→回测→图表→报告；数据已缓存，可离线重跑，加 <code>--refresh</code> 重新抓取）。
-产物：<code>data/raw/</code>（ETF 日线与资金流快照，抓取日期 2026-10-31）、
-<code>output/tables/</code>（统计表与 <code>results.json</code>）、
+产物：<code>data/raw/</code>（ETF 日线与资金流快照，抓取日期 {snap}）、
+<code>output/results.json</code> 与 <code>output/tables/</code>（统计表）、
 <code>output/figures/</code>（图 1–4）、<code>output/{PROJECT_ID}_report.html/.pdf</code>。
 报告中每个数字均由 <code>results.json</code> 渲染，未手工填写；完整流程亦整合为自包含 Notebook
 （<code>output/{PROJECT_ID}_research.ipynb</code>），已推送至 GitHub 公开仓库
@@ -419,7 +439,7 @@ GitHub 原生视图 <a class="url" href="{GITHUB_NB_URL}">{GITHUB_NB_URL}</a>。
 <ol class="ref">
 <li>华泰证券研究所，徐特、何康（2026-08-13）.《行业资金流向图应用于行业轮动》. 华泰证券金工深度研究.</li>
 <li>Chaikin, M. (1966). The Chaikin Money Flow indicator. <i>Stock Market Publishing</i>.</li>
-<li>数据：baostock ETF 日线接口；新浪财经 MoneyFlow 单只 ETF 资金流接口（抓取日期 2026-10-31）.</li>
+<li>数据：baostock ETF 日线接口；新浪财经 MoneyFlow 单只 ETF 资金流接口（抓取日期 {snap}）.</li>
 <li>本项目代码与 Notebook：<a class="url" href="{REPO_URL}">{REPO_URL}</a>.</li>
 </ol>
 

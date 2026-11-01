@@ -1,4 +1,4 @@
-"""kwunkau_day02 一键复现：抓数 → 特征 → 流向图 → 回测 → 图表 → 报告 → Notebook。
+"""kwunkau_day02 一键复现：抓数 → 特征 → 流向图 → 回测 → 图表 → 报告/图解 → Notebook。
 
 用法（需在已安装依赖的虚拟环境中运行）：
     python run_all.py                 # 使用本地缓存，离线可跑
@@ -42,43 +42,48 @@ def main() -> None:
 
     if args.refresh:
         daily, _ = build_raw(force=True)
-        print(f"[1/7] 数据重新抓取完成  {time.time() - t0:.1f}s")
+        print(f"[1/8] 数据重新抓取完成  {time.time() - t0:.1f}s")
     else:
         daily = fetch_etf_daily()
-        print(f"[1/7] 使用本地缓存  {len(daily):,} 行  {time.time() - t0:.1f}s")
+        print(f"[1/8] 使用本地缓存  {len(daily):,} 行  {time.time() - t0:.1f}s")
 
     from src.build_features import build_dataset
 
     build_dataset(daily)
-    print(f"[2/7] 特征构建完成  {time.time() - t0:.1f}s")
+    print(f"[2/8] 特征构建完成  {time.time() - t0:.1f}s")
 
     from src.flowmap import run as run_flowmap
 
     fm = run_flowmap(force=args.refresh)
-    print(f"[3/7] 资金流向图完成  {len(fm['errors'])} 日  {time.time() - t0:.1f}s")
+    print(f"[3/8] 资金流向图完成  {len(fm['errors'])} 日  {time.time() - t0:.1f}s")
 
     from src.analysis import run as run_analysis
 
     res = run_analysis()
-    print(f"[4/7] 回测与统计完成  {time.time() - t0:.1f}s")
+    print(f"[4/8] 回测与统计完成  {time.time() - t0:.1f}s")
 
     from src.charts import build_all
 
     build_all()
-    print(f"[5/7] 图表生成完成  {time.time() - t0:.1f}s")
+    print(f"[5/8] 图表生成完成  {time.time() - t0:.1f}s")
 
     from src.make_report import build as build_report
 
     pdf = build_report()
-    print(f"[6/7] 报告生成完成  {pdf}  {time.time() - t0:.1f}s")
+    print(f"[6/8] 报告生成完成  {pdf}  {time.time() - t0:.1f}s")
+
+    from src.make_explainer import build as build_explainer
+
+    build_explainer()
+    print(f"[7/8] 一页图解完成  {time.time() - t0:.1f}s")
 
     if not args.skip_notebook:
         from src.make_notebook import build as build_notebook
 
         nb = build_notebook()
-        print(f"[7/7] Notebook 完成  {nb}  {time.time() - t0:.1f}s")
+        print(f"[8/8] Notebook 完成  {nb}  {time.time() - t0:.1f}s")
     else:
-        print("[7/7] 跳过 Notebook")
+        print("[8/8] 跳过 Notebook")
 
     perf = res["performance"]["net_composite_50m"]
     print(f"[done] 5000 万综合因子：年化 {perf['cagr']*100:.1f}%，"

@@ -16,6 +16,7 @@ import statsmodels.api as sm
 from .backtest import (
     build_factor_panels,
     run_engine,
+    split_factors,
     weekly_signal_dates,
 )
 from .build_features import build_dataset
@@ -27,7 +28,9 @@ from .config import (
     CAPITAL,
     COMMISSION_GRID,
     END_DATE,
+    DATA_RAW,
     IMPACT_GRID,
+    KEY_DATES,
     OUTPUT,
     SEED,
     START_DATE,
@@ -38,7 +41,7 @@ from .config import (
     ensure_dirs,
 )
 from .fetch_data import fetch_etf_daily, fetch_sina_flow
-from .flowmap import run as run_flowmap
+from .flowmap import problem_size, run as run_flowmap
 
 # 研报原文数字（仅用于对照，不参与本地计算）
 REPORT_REF = {
@@ -47,8 +50,10 @@ REPORT_REF = {
     "benchmark": {"cagr": 0.0931, "mdd": -0.2877},
     "period": "2018-12-31~2026-07-31",
     "n_industries": 40,
+    # 研报对电子/通信设备“净流入为正比例”的描述（分母 39 = 其他行业数）
+    "semi_breadth_path": "29/39→37/39→13/39",
+    "telecom_breadth_0624": "9/39",
 }
-KEY_DATES = ["2026-06-24", "2026-06-30", "2026-07-06"]
 
 
 # ---------------------------------------------------------------- 指标
@@ -105,14 +110,14 @@ def slice_nav(nav: pd.DataFrame, start: str, end: str) -> pd.DataFrame:
 
 def ic_stats(factor: pd.DataFrame, mask: pd.DataFrame, close: pd.DataFrame,
              horizon: int = 5) -> dict:
-    """周度截面 Spearman IC + 多空组合。"""
-    dates = close.index
-    dates = dates[(dates >= pd.Timestamp(START_DATE)) & (dates <= pd.Timestamp(END_DATE))]
+    """周度截面 Spearman IC + 多空组合；close 须为复权价格（feats["adj"]）。"""
+    full = close.index
+    dates = full[(full >= pd.Timestamp(START_DATE)) & (full <= pd.Timestamp(END_DATE))]
     sigs = weekly_signal_dates(dates)
     ics, longs, shorts = [], [], []
     for sd in sigs:
-        pos = dates.get_loc(sd)
-        if pos + horizon >= len(dates):
+        pos = full.get_loc(sd)  # 必须在完整索引上定位，否则前向收益会错位到预热期
+        if pos + horizon >= len(full) or full[pos + horizon] > pd.Timestamp(END_DATE):
             continue
         fwd = close.iloc[pos + horizon] / close.iloc[pos] - 1.0
         x = factor.loc[sd].where(mask.loc[sd])
@@ -170,6 +175,16 @@ def hac_t(x: np.ndarray, lags: int = 4) -> float:
     return float(res.tvalues[0])
 
 
+def holdings_on(nav: pd.DataFrame, date: str) -> list[str]:
+    """某日收盘后的持仓代码（由回测引擎逐日记录，已含份额折算）。"""
+    held = nav.loc[:pd.Timestamp(date), "holdings"].iloc[-1]
+    return held.split(",") if held else []
+
+
+def top_codes(factor: pd.DataFrame, date: str, n: int = TOP_N) -> list[str]:
+    return list(factor.loc[pd.Timestamp(date)].dropna().sort_values(ascending=False).index[:n])
+
+
 # ---------------------------------------------------------------- 主流程
 
 def run() -> dict:
@@ -186,6 +201,7 @@ def run() -> dict:
     gross_comp = run_engine(feats, comp, cost=False, cap=False)
     net_base = run_engine(feats, base, capital=CAPITAL, cost=True, cap=True)
     net_comp = run_engine(feats, comp, capital=CAPITAL, cost=True, cap=True)
+    cap_comp = run_engine(feats, comp, capital=CAPITAL, cost=False, cap=True)
     bench = run_engine(feats, base, capital=CAPITAL, cost=False, cap=False, benchmark=True)
     bench_net = run_engine(feats, base, capital=CAPITAL, cost=True, cap=True, benchmark=True)
 
@@ -194,19 +210,20 @@ def run() -> dict:
         "gross_composite": perf_metrics(gross_comp["nav"]),
         "net_base_50m": perf_metrics(net_base["nav"]),
         "net_composite_50m": perf_metrics(net_comp["nav"]),
+        "cap_only_composite_50m": perf_metrics(cap_comp["nav"]),
         "benchmark_gross": perf_metrics(bench["nav"]),
         "benchmark_net_50m": perf_metrics(bench_net["nav"]),
     }
-    for key in ["gross_base", "gross_composite", "net_base_50m", "net_composite_50m"]:
+    for key in ["gross_base", "gross_composite", "net_base_50m", "net_composite_50m",
+                "cap_only_composite_50m"]:
         perf[key]["excess_vs_benchmark"] = (
             perf[key]["cagr"] - perf["benchmark_gross"]["cagr"]
         )
 
     # 容量扫描
     cap_rows = []
-    comp_name = comp
     for aum in AUM_GRID:
-        r = run_engine(feats, comp_name, capital=aum, cost=True, cap=True)
+        r = run_engine(feats, comp, capital=aum, cost=True, cap=True)
         m = perf_metrics(r["nav"])
         cap_rows.append({
             "资金规模(万元)": round(aum / 1e4),
@@ -253,7 +270,7 @@ def run() -> dict:
     for key, label in [("base", "基础因子"), ("composite", "综合因子"),
                        ("max_in", "行业间最大净流入"), ("breadth", "净流入为正比例"),
                        ("out_sum", "净流出之和"), ("external", "外部净流入")]:
-        ic[key] = ic_stats(comps20[key], feats["mask"], feats["close"].ffill())
+        ic[key] = ic_stats(comps20[key], feats["mask"], feats["adj"])
 
     # 子区间
     subs = []
@@ -311,6 +328,33 @@ def run() -> dict:
         })
     key_df = pd.DataFrame(key_rows)
 
+    # 2026 关键事实：因子排名、实际持仓、组合月度收益、新浪资金流峰值
+    def named(codes):
+        return [{"code": c, "name": name_map.get(c, c)} for c in codes]
+
+    navs_2026 = pd.concat({"strategy": net_comp["nav"].value, "benchmark": bench["nav"].value},
+                          axis=1)
+    month_end = navs_2026.resample("ME").last()
+    month_ret = month_end.pct_change().loc["2026-01-01":"2026-12-31"]
+    tel = sina[(sina.code == "sh.515880")
+               & sina.date.between("2026-06-22", "2026-06-30")].set_index("date").ratioamount
+    facts_2026 = {
+        "top5_base_0630": named(top_codes(base, "2026-06-30")),
+        "top5_composite_0630": named(top_codes(comp, "2026-06-30")),
+        "holdings_net_0630": named(holdings_on(net_comp["nav"], "2026-06-30")),
+        "holdings_net_0930": named(holdings_on(net_comp["nav"], "2026-09-30")),
+        "strategy_monthly": {k.strftime("%Y-%m"): float(v)
+                             for k, v in month_ret["strategy"].items()},
+        "benchmark_monthly": {k.strftime("%Y-%m"): float(v)
+                              for k, v in month_ret["benchmark"].items()},
+        "telecom_flow_peak_late_june": {"date": str(tel.idxmax().date()),
+                                        "ratio": float(tel.max())},
+    }
+
+    # 份额折算事件与样本起点的可投数量（用于说明口径，不手填）
+    sf = split_factors(feats).loc[START_DATE:END_DATE]
+    n_eligible = feats["mask"].sum(axis=1)
+
     # 流向图误差
     errs = flow["errors"].copy()
     errs["year"] = errs.date.dt.year
@@ -328,6 +372,13 @@ def run() -> dict:
             "adv_min_yi": ADV_MIN_YI,
             "capital": CAPITAL,
             "n_flow_days": int(len(flow["errors"])),
+            "snapshot_date": json.loads(
+                (DATA_RAW / "etf_daily.meta.json").read_text(encoding="utf-8")
+            )["fetched_at"][:10],
+            "n_split_events": int((sf != 1.0).sum().sum()),
+            "eligible_at_start": int(n_eligible.loc[START_DATE:].iloc[0]),
+            "problem_size": problem_size(int(feats["pct"].shape[1])),
+            "problem_size_report": problem_size(REPORT_REF["n_industries"]),
         },
         "report_ref": REPORT_REF,
         "performance": perf,
@@ -348,6 +399,7 @@ def run() -> dict:
             "ytd": ytd_df.to_dict("records"),
             "monthly": monthly.to_dict("records"),
             "key_dates": key_df.to_dict("records"),
+            "facts": facts_2026,
         },
     }
 
@@ -383,5 +435,5 @@ def run() -> dict:
     pd.concat({k: v.value for k, v in navs.items()}, axis=1).to_csv(
         OUTPUT / "nav_curves.csv", encoding="utf-8-sig"
     )
-    print(f"[analysis] 结果写入 {OUTPUT / 'results.json'}")
+    print("[analysis] 结果写入 output/results.json")
     return results

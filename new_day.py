@@ -4,8 +4,11 @@
     python new_day.py 02 "主题名"
     python new_day.py 03            # 主题留空，稍后写进 需求.md
 
-生成内容：kwunkau_dayNN/{需求.md, README.md, .gitignore, run_all.py, src/config.py, src/pipeline.py}
-以及空的 data/raw/、output/ 目录。之后的全部工作由 Claude 读取 需求.md 后完成。
+生成内容：kwunkau_dayNN/{需求/需求.md, README.md, .gitignore, run_all.py, src/config.py, src/pipeline.py}
+以及空的 data/raw/、output/ 目录。
+
+用户只需：① 填写 需求/需求.md；② 把研报、题目截图、参考代码等资料放进 需求/；
+③ 对 Claude 说「执行 dayNN」。之后的全部工作按 CLAUDE.md 第 7 节完成。
 """
 
 from __future__ import annotations
@@ -17,10 +20,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 
 TEMPLATES: dict[str, str] = {
-    "需求.md": """# __DAY__｜需求文档
+    "需求/需求.md": """# __DAY__｜需求文档
 
-> 把本次作业的完整要求写在下面。写完后告诉 Claude「执行 __DAY__」，
-> 其余步骤按其项目约束（`CLAUDE.md` 第 7 节）自动完成。
+> 1. 填写下表（看不懂的字段可以留“待填写”，Claude 会先提问）；
+> 2. 把所有资料（研报 PDF、题目截图、老师要求、参考代码、数据文件）直接放进本目录 `需求/`；
+> 3. 对 Claude 说「执行 __DAY__」。其余步骤按 `CLAUDE.md` 第 7 节自动完成。
+>
+> `需求/` 下除本文件外默认**不推送**到公开仓库（第三方资料版权）；需要公开的文件请在「资料清单」里标“公开”。
 
 | 字段 | 内容 |
 |---|---|
@@ -36,7 +42,14 @@ TEMPLATES: dict[str, str] = {
 
 ## 详细说明
 
-（可自由补充：参考文献、想探索的方向、验收标准、参考作业等）
+（可自由补充：老师原话、想探索的方向、验收标准、参考作业等）
+
+## 资料清单
+
+（Claude 执行时自动扫描 `需求/` 并补全本表）
+
+| 文件 | 用途 | 是否公开 |
+|---|---|---|
 
 ## 变更记录
 
@@ -52,7 +65,7 @@ __TOPIC__
 |---|---|
 | 报告 | `output/__DAY___report.pdf` |
 | Notebook | `output/__DAY___research.ipynb` |
-| 需求文档 | `需求.md` |
+| 需求文档 | `需求/需求.md` |
 
 ## 复现
 
@@ -64,13 +77,18 @@ python run_all.py
 
 ## 在线查看
 
-nbviewer：`https://nbviewer.org/github/kwunkau/quant-research/blob/main/__DAY__/output/__DAY___research.ipynb`
+nbviewer：`https://nbviewer.org/urls/raw.githack.com/kwunkau/quant-research/main/__DAY__/output/__DAY___research.ipynb`
 """,
     ".gitignore": """data/processed/
 output/figures/
 output/tables/
 __pycache__/
 .venv/
+.ipynb_checkpoints/
+
+# 需求/ 下的参考资料默认不公开，只提交需求文档；需公开的文件用 !需求/<文件名> 放行
+需求/*
+!需求/需求.md
 """,
     "src/__init__.py": '"""__DAY__ 源码包。"""\n',
     "src/config.py": '''"""__DAY__ 全局配置：路径、区间、分享链接。"""
@@ -97,10 +115,23 @@ GITHUB_BRANCH = "main"
 
 NB_PATH = f"{PROJECT_ID}/output/{PROJECT_ID}_research.ipynb"
 REPO_URL = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}"
-NBVIEWER_URL = (f"https://nbviewer.org/github/{GITHUB_USER}/{GITHUB_REPO}"
-                f"/blob/{GITHUB_BRANCH}/{NB_PATH}")
+GITHUB_NB_URL = f"{REPO_URL}/blob/{GITHUB_BRANCH}/{NB_PATH}"
+# nbviewer 的 /github/ 路由常因 GitHub API 限流返回 503/404，/urls/ + CDN 更稳定；两条都写进报告
+NBVIEWER_CANONICAL = (f"https://nbviewer.org/github/{GITHUB_USER}/{GITHUB_REPO}"
+                      f"/blob/{GITHUB_BRANCH}/{NB_PATH}")
+NBVIEWER_URL = (f"https://nbviewer.org/urls/raw.githack.com/{GITHUB_USER}/{GITHUB_REPO}"
+                f"/{GITHUB_BRANCH}/{NB_PATH}")
 
-FONT_PATH = "C:/Windows/Fonts/simhei.ttf"
+# 中文字体：按顺序尝试（Windows / macOS / Colab 的文泉驿 / Noto），直接 addfont 绕过字体缓存
+FONT_FILES = [
+    "C:/Windows/Fonts/simhei.ttf",
+    "C:/Windows/Fonts/msyh.ttc",
+    "/System/Library/Fonts/PingFang.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+]
+FONT_NAMES = ["SimHei", "Microsoft YaHei", "PingFang SC", "WenQuanYi Zen Hei",
+              "Noto Sans CJK SC"]
 
 
 def ensure_dirs() -> None:
@@ -115,14 +146,11 @@ def setup_matplotlib() -> None:
     matplotlib.use("Agg")
     from matplotlib import font_manager, rcParams
 
-    if Path(FONT_PATH).exists():
-        font_manager.fontManager.addfont(FONT_PATH)
-        rcParams["font.sans-serif"] = ["SimHei"]
-    else:
-        for name in ["Microsoft YaHei", "WenQuanYi Zen Hei", "Noto Sans CJK SC"]:
-            if any(f.name == name for f in font_manager.fontManager.ttflist):
-                rcParams["font.sans-serif"] = [name]
-                break
+    for path in FONT_FILES:
+        if Path(path).exists():
+            font_manager.fontManager.addfont(path)
+    installed = {f.name for f in font_manager.fontManager.ttflist}
+    rcParams["font.sans-serif"] = [n for n in FONT_NAMES if n in installed] + ["DejaVu Sans"]
     rcParams["axes.unicode_minus"] = False
     rcParams["savefig.dpi"] = 160
 ''',
@@ -133,7 +161,7 @@ from __future__ import annotations
 
 def run() -> dict:
     raise NotImplementedError(
-        "本作业尚未实现。请先完善 需求.md，再执行 `执行 __DAY__` 让 Claude 补全。"
+        "本作业尚未实现。请先完善 需求/需求.md，再执行 `执行 __DAY__` 让 Claude 补全。"
     )
 ''',
     "run_all.py": '''"""__DAY__ 一键复现入口（需在已安装依赖的虚拟环境中运行）。"""
@@ -172,7 +200,7 @@ if __name__ == "__main__":
 ''',
 }
 
-EMPTY_DIRS = ["data/raw", "output"]
+EMPTY_DIRS = ["data/raw", "output", "需求"]
 
 
 def scaffold(day: str, topic: str) -> Path:
@@ -207,7 +235,8 @@ def main() -> None:
     topic = sys.argv[2] if len(sys.argv) > 2 else "待填写"
     target = scaffold(day, topic)
     print(f"[created] {target}")
-    print("下一步：在 需求.md 中填写要求，然后说「执行 " + target.name + "」")
+    print(f"下一步：填写 {target.name}/需求/需求.md，把资料放进 {target.name}/需求/，"
+          f"然后说「执行 {target.name.removeprefix('kwunkau_')}」")
 
 
 if __name__ == "__main__":

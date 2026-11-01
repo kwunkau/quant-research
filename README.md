@@ -12,10 +12,10 @@
 - day01：`https://nbviewer.org/github/kwunkau/quant-research/blob/main/kwunkau_day01/output/kwunkau_day01_research.ipynb`
 - day02：`https://nbviewer.org/urls/raw.githack.com/kwunkau/quant-research/main/kwunkau_day02/output/kwunkau_day02_research.ipynb`
 
-## 复现
+## 复现（以任一作业目录为例）
 
 ```bash
-cd kwunkau_day01
+cd kwunkau_day02
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt      # Windows: .venv\Scripts\pip
 python run_all.py

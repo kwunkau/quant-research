@@ -13,6 +13,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from .build_features import zscore_cs
 from .config import (
     ADV_MIN_YI,
     CAPITAL,
@@ -24,6 +25,7 @@ from .config import (
     MAX_PARTICIPATION,
     START_DATE,
     TOP_N,
+    W_GRID,
 )
 
 
@@ -37,13 +39,6 @@ def winsor_cs(df: pd.DataFrame, mask: pd.DataFrame | None = None,
     return x.clip(lower=q[lo], upper=q[hi], axis=0)
 
 
-def zscore_cs(df: pd.DataFrame, mask: pd.DataFrame | None = None) -> pd.DataFrame:
-    x = df.where(mask) if mask is not None else df
-    mu = x.mean(axis=1)
-    sd = x.std(axis=1, ddof=0).replace(0, np.nan)
-    return x.sub(mu, axis=0).div(sd, axis=0)
-
-
 def build_factor_panels(feats: dict, micro: pd.DataFrame) -> dict:
     """构造基础因子、四个微观因子与综合因子（W=15/20/25）。"""
     mask = feats["mask"]
@@ -55,7 +50,7 @@ def build_factor_panels(feats: dict, micro: pd.DataFrame) -> dict:
     }
 
     out = {"components": {}}
-    for w in (15, 20, 25):
+    for w in W_GRID:
         comps = {}
         base = feats[f"base_w{w}"]
         comps["base"] = zscore_cs(winsor_cs(base, mask), mask)
@@ -245,7 +240,7 @@ def run_engine(feats: dict, factor: pd.DataFrame, top_n: int = TOP_N,
         value = cash + sum(sh * close_post.get(c, np.nan) for c, sh in shares.items()
                            if np.isfinite(close_post.get(c, np.nan)))
         records.append({"date": d, "value": value, "cash": cash,
-                        "n_pos": len(shares)})
+                        "n_pos": len(shares), "holdings": ",".join(sorted(shares))})
 
     nav = pd.DataFrame(records).set_index("date")
     nav["ret"] = nav["value"].pct_change(fill_method=None).fillna(0.0)

@@ -12,10 +12,11 @@
 | 作业目录 | `kwunkau_dayNN/`（NN 为两位数字） |
 | 研究报告 | `output/kwunkau_dayNN_report.pdf`（同名 `.html`） |
 | Notebook | `output/kwunkau_dayNN_research.ipynb`（统一生成在 output/ 下） |
+| 需求与资料 | `需求/需求.md` + `需求/` 下参考资料（资料默认不公开） |
 
 - Colab 上的文件名与本地保持一致（上传后重命名）。
 - 报告标题页、README、Notebook 首行统一标注作业编号（如 `kwunkau_day01`）。
-- 新增作业从 `kwunkau_day02` 起顺延编号，不复用、不跳号。
+- 新增作业按已有最大编号顺延，不复用、不跳号。
 - **不打包 zip**：代码随目录直接提交，或以仓库 / Colab 链接形式给出。
 - Notebook 一律生成在 `output/` 下，不在项目根目录或其它子目录另建 .ipynb。
 
@@ -86,7 +87,7 @@ python -m venv .venv            # Python 3.12+
 ### 6.2 推送流程（gh CLI 已登录，可整套脚本化）
 
 1. 项目根执行 `git init -b main`（仅首次）。
-2. `.gitignore`：忽略 `.venv/`、`__pycache__/`、`data/processed/`、`output/figures/`、`output/tables/`；
+2. `.gitignore`：忽略 `.venv/`、`__pycache__/`、`data/processed/`、`output/figures/`、`output/tables/`、`需求/*`（放行 `需求/需求.md`）；
    **保留** `data/raw/`、报告 PDF/HTML、Notebook、`results.json`。
 3. `git add -A && git commit`。
 4. 首次建仓：`gh repo create quant-research --public --source=. --remote=origin --push`；后续：`git push`。
@@ -99,6 +100,8 @@ python -m venv .venv            # Python 3.12+
 
 - `raw.githubusercontent.com` 返回 200，且文件体积与本机 `.ipynb` 一致。
 - nbviewer 返回 200，页面能看到标题与图表（空输出 = 没推执行结果，重跑后再推）。
+- nbviewer `/github/` 路由常因 GitHub API 限流返回 503/404：主链接用 `/urls/raw.githack.com/...`，
+  `/github/` 直连与 GitHub 原生视图作为备选一并写入报告（`config.py` 已推导三条）。
 - **推送前必须执行过 Notebook**，图表、表格、数字已内嵌；空输出直接推送视为不合格。
 
 ### 6.4 Notebook 要求
@@ -114,47 +117,58 @@ python -m venv .venv            # Python 3.12+
 
 Gitee 镜像（国内访问更快）、Kaggle Notebooks 可作为备选，需在 README 注明。
 
-## 7. 多日作业流程（需求文档驱动）
+## 7. 多日作业流程（需求文件夹驱动）
 
-### 7.1 目录脚手架
-
-新作业用脚本生成，不要手工复制粘贴：
+### 7.1 用户只做三件事
 
 ```bash
-python new_day.py 02 "主题名"      # 生成 kwunkau_day02/
+python new_day.py 03 "主题名"      # ① 生成 kwunkau_day03/（含空的 需求/ 文件夹）
 ```
 
-脚本会创建最小可运行骨架：`需求.md`、`README.md`、`src/config.py`（已填 PROJECT_ID 与链接变量）、
-`run_all.py`、`.gitignore`，以及空的 `data/raw/`、`output/`。
+② 填写 `kwunkau_day03/需求/需求.md`，并把**全部资料**（研报 PDF、题目截图、老师原话、参考代码、数据文件）
+直接丢进 `kwunkau_day03/需求/`；③ 对 Claude 说「执行 day03」。之后不再需要逐项确认。
 
-### 7.2 唯一输入：`需求.md`
+脚手架生成：`需求/需求.md`、`README.md`、`.gitignore`、`run_all.py`、`src/config.py`（PROJECT_ID、链接、
+跨平台中文字体已配好）、`src/pipeline.py`，以及空的 `data/raw/`、`output/`。
 
-每次作业的**全部要求**写进 `kwunkau_dayNN/需求.md`，字段固定：
+### 7.2 唯一输入：`需求/` 文件夹
 
-| 字段 | 说明 |
+| 位置 | 说明 |
 |---|---|
-| 研究主题 | 一句话题目 |
-| 研究问题 | 要验证的假设 / 要回答的问题 |
-| 数据要求 | 数据源、区间、频率、口径 |
-| 指标与方法 | 指定或建议的分析方法（可留空由 Claude 选） |
-| 交付要求 | 报告结构、页数、图表数量、Notebook 范围 |
-| 特殊约束 | 命名、风格、必须包含/排除的内容 |
-| 状态 | `待执行` / `执行中` / `已完成`（由 Claude 更新） |
-| 变更记录 | 追加式记录每次需求变更与对应调整 |
+| `需求/需求.md` | 字段表（见下），随仓库公开 |
+| `需求/*` 其它文件 | 参考资料；**默认不推送**（`.gitignore` 已排除），需公开的在「资料清单」标“公开”并在 `.gitignore` 放行 |
 
-### 7.3 执行契约
+`需求.md` 字段固定：研究主题 / 研究问题 / 数据要求 / 指标与方法（可留空） / 交付要求 / 特殊约束 /
+状态（`待执行`→`执行中`→`已完成`）/ 交付链接 / 更新时间 / 详细说明 / **资料清单** / 变更记录（追加式）。
 
-用户说「执行 dayNN」后，Claude 按以下顺序推进，无需再次确认细节：
+### 7.3 执行契约（「执行 dayNN」后按顺序推进）
 
-1. 读取 `kwunkau_dayNN/需求.md`，若字段有歧义，先提出不超过 3 个问题；
-2. 数据可得性探针（先验证接口能取到所需历史长度，再动手）；
-3. 实现 `src/`、生成并执行 Notebook、生成报告 PDF；
-4. 跑 `run_all.py` 全流程，核对报告数字与 `results.json` 一致；
-5. 推送 GitHub，回填 nbviewer 链接到 `需求.md`、README 与报告；
-6. 更新 `需求.md` 的状态与变更记录，回报链接与结论摘要。
+1. **读需求**：读 `需求/需求.md` 与 `需求/` 下全部资料（PDF 抽文本、图片直接看），补全「资料清单」；
+   字段有歧义时提出不超过 3 个问题，其余按本文件默认规范处理；状态改为 `执行中`。
+2. **抽取对照基准**：资料里的原文数字（研报收益、回撤、示例日期与取值）写进代码常量
+   （如 `REPORT_REF`）并进入 `results.json`，报告只引用常量，不在正文手抄。
+3. **数据探针**：先验证接口能取到所需历史长度与字段，再动手；不足则如实写入需求与报告。
+4. **实现**：`src/` 按职责拆分；`run_all.py` 一条命令跑完 抓数 → 特征 → 分析 → 图表 → 报告 → Notebook。
+5. **自检**（见 7.4，全部通过才进入下一步）。
+6. **推送**：按第 6 节提交推送，验证链接后回填 `需求.md`、README、报告，再生成并推送一次。
+7. **收尾**：状态改为 `已完成`，变更记录追加一条，回报：链接、核心结论（3–5 条）、未复现/不显著项。
 
-### 7.4 约束
+### 7.4 交付前自检清单
+
+- [ ] `run_all.py` 从缓存全流程跑通，Notebook 已执行、无报错单元、图片已内嵌。
+- [ ] 报告 / Notebook / 附加页面中的数字全部由 `results.json` 渲染；`grep` 正文模板无手写百分比。
+- [ ] 结论段的每个判断（“高于/低于”“领先”“复现/未复现”）都能在 `results.json` 中找到对应数字且方向一致；
+      Notebook 结论单元由代码生成，不写死 markdown。
+- [ ] 时间序列计算用**完整日期索引**定位（先过滤再 `get_loc` 后 `iloc` 原表会错位）；
+      收益类计算用复权价格或涨跌幅累乘，不用不复权收盘价（ETF 份额折算会产生假跳空）。
+- [ ] 回测“持仓”“实际成交”与“信号排名”分开表述，持仓以引擎记录为准。
+- [ ] PDF 页数符合要求、无方框字；交付物无本机路径/用户名/代理（`grep -iE "Users|Administrator|:\\"`）。
+- [ ] `requirements.txt` 版本与 venv 中实际安装版本一致（`pip freeze` 对照）。
+- [ ] `需求/` 下第三方资料未被 `git add`（`git status` 确认）。
+
+### 7.5 约束
 
 - 一次只执行一个作业目录，避免交叉污染数据与缓存。
 - 需求变更只追加到「变更记录」，不改写历史条目。
+- 附加产物（如一页图解）也必须放在 `src/` 并由 `run_all.py` 生成，不在作业根目录放临时脚本。
 - 未在 `需求.md` 中明确的内容，按本文件其它章节的默认规范处理。

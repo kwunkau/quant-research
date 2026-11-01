@@ -67,6 +67,9 @@ MAX_PARTICIPATION = 0.05
 IMPACT_GRID = [5.0, 10.0, 20.0]
 COMMISSION_GRID = [0.5, 1.0, 2.0]
 
+# 研报 2026 案例的三个示例日（流向图、广度对照、复盘图共用）
+KEY_DATES = ["2026-06-24", "2026-06-30", "2026-07-06"]
+
 # 新浪单只 ETF 资金流覆盖起点
 FLOW_START = "2025-02-06"
 
@@ -91,7 +94,16 @@ NBVIEWER_CANONICAL = (f"https://nbviewer.org/github/{GITHUB_USER}/{GITHUB_REPO}"
 NBVIEWER_URL = (f"https://nbviewer.org/urls/raw.githack.com/{GITHUB_USER}/{GITHUB_REPO}"
                 f"/{GITHUB_BRANCH}/{NB_PATH}")
 
-FONT_PATH = "C:/Windows/Fonts/simhei.ttf"
+# 中文字体：按顺序尝试（Windows / macOS / Colab 安装的文泉驿 / Noto），都不存在时按字体名回退
+FONT_FILES = [
+    "C:/Windows/Fonts/simhei.ttf",
+    "C:/Windows/Fonts/msyh.ttc",
+    "/System/Library/Fonts/PingFang.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+]
+FONT_NAMES = ["SimHei", "Microsoft YaHei", "PingFang SC", "WenQuanYi Zen Hei",
+              "Noto Sans CJK SC"]
 
 
 def ensure_dirs() -> None:
@@ -100,20 +112,21 @@ def ensure_dirs() -> None:
 
 
 def setup_matplotlib() -> None:
-    """统一中文字体与绘图风格。"""
+    """统一中文字体与绘图风格。
+
+    直接 addfont 字体文件，不依赖 matplotlib 字体缓存
+    （Colab 上 apt 新装的字体不会出现在已有缓存里，否则会出现方框字）。
+    """
     import matplotlib
 
     matplotlib.use("Agg")
     from matplotlib import font_manager, rcParams
 
-    if Path(FONT_PATH).exists():
-        font_manager.fontManager.addfont(FONT_PATH)
-        rcParams["font.sans-serif"] = ["SimHei"]
-    else:
-        for name in ["Microsoft YaHei", "WenQuanYi Zen Hei", "Noto Sans CJK SC"]:
-            if any(f.name == name for f in font_manager.fontManager.ttflist):
-                rcParams["font.sans-serif"] = [name]
-                break
+    for path in FONT_FILES:
+        if Path(path).exists():
+            font_manager.fontManager.addfont(path)
+    installed = {f.name for f in font_manager.fontManager.ttflist}
+    rcParams["font.sans-serif"] = [n for n in FONT_NAMES if n in installed] + ["DejaVu Sans"]
     rcParams["axes.unicode_minus"] = False
     rcParams["figure.dpi"] = 110
     rcParams["savefig.dpi"] = 160

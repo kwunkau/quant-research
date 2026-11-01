@@ -31,6 +31,19 @@ def incidence(n_nodes: int) -> tuple[np.ndarray, list[tuple[int, int]]]:
     return a, pairs
 
 
+def problem_size(n_industries: int) -> dict:
+    """单日问题规模：消去守恒约束后的自由参数个数 vs 方程（节点残差）个数。
+
+    边数 = (N+1)N/2；关联矩阵秩 = N，零空间维数 = 边数 − N；
+    自由参数 = γ（零空间） + α（N+1 个节点） + β1、β2。
+    """
+    n_edges = (n_industries + 1) * n_industries // 2
+    n_gamma = n_edges - n_industries
+    return {"n_industries": n_industries, "n_edges": n_edges, "n_gamma": n_gamma,
+            "n_alpha": n_industries + 1, "n_params": n_gamma + n_industries + 1 + 2,
+            "n_equations": n_industries + 1}
+
+
 class _Problem:
     """单个交易日的优化问题；缓存 A、q0、零空间，便于重复求解。"""
 

@@ -22,7 +22,8 @@
 |---|---|
 | 报告 | `output/kwunkau_day02_report.pdf` |
 | Notebook | `output/kwunkau_day02_research.ipynb` |
-| 需求文档 | `需求.md` |
+| 一页图解 | `output/kwunkau_day02_explainer.pdf`（同名 `.html`） |
+| 需求文档 | `需求/需求.md`（参考资料同目录，不公开） |
 | 结果文件 | `output/results.json` |
 
 ## 复现
@@ -46,4 +47,4 @@ python run_all.py
 
 ## 说明
 
-华泰研报 PDF 为第三方付费研究，未随仓库分发；报告仅引用其标题、日期与公开结论。
+华泰研报 PDF 为第三方付费研究，放在 `需求/` 下但未随仓库分发；报告仅引用其标题、日期与公开结论。

@@ -21,7 +21,7 @@ from pathlib import Path
 IN_COLAB = "google.colab" in sys.modules
 
 if IN_COLAB:
-    get_ipython().system("pip -q install baostock statsmodels")
+    get_ipython().system("pip -q install baostock==0.9.1 statsmodels")
     get_ipython().system("apt-get -qq install -y fonts-wqy-zenhei > /dev/null")
     repo = Path("/content/quant-research")
     if not repo.exists():
@@ -95,7 +95,9 @@ print(f"资金流向图：{len(err)} 个交易日，最大误差中位数 "
       f"95 分位 {err.max_abs_err.quantile(.95)*1000:.2f}‰")
 
 key = []
-for d in ["2026-06-24", "2026-06-30", "2026-07-06"]:
+from src.config import KEY_DATES
+
+for d in KEY_DATES:
     cs = cross_section(feats, pd.Timestamp(d))
     sol = solve_day(cs["Q"], cs["H"], cs["V"], cs["S"], n_random=5)
     b = fm["micro"].query("date == @d").set_index("code").breadth
@@ -132,7 +134,7 @@ pd.DataFrame(rows).round(4)
 IC = r'''
 ic_rows = []
 for label, fac in [("基础因子", base), ("综合因子", comp)]:
-    s = ic_stats(fac, mask, feats["close"].ffill())
+    s = ic_stats(fac, mask, feats["adj"])  # 复权价格，避免份额折算日的假跳空
     ic_rows.append({"因子": label, "RankIC": s["mean_ic"], "t值": s["ic_t"],
                     "IC>0占比": s["positive_share"]})
 pd.DataFrame(ic_rows).round(4)
@@ -154,9 +156,12 @@ import json
 from src.config import OUTPUT
 
 res = json.loads((OUTPUT / "results.json").read_text(encoding="utf-8"))
-ytd = pd.DataFrame(res["review_2026"]["ytd"])
-ytd["ytd"] = (ytd["ytd"] * 100).round(1)
-ytd.head(8)
+facts = res["review_2026"]["facts"]
+print("2026-06-30 综合因子前 5：", "、".join(x["name"] for x in facts["top5_composite_0630"]))
+print("2026-06-30 5000 万实际持仓：", "、".join(x["name"] for x in facts["holdings_net_0630"]))
+monthly = pd.DataFrame({"5000万综合因子": facts["strategy_monthly"],
+                        "等权基准": facts["benchmark_monthly"]})
+(monthly * 100).round(1)
 '''
 
 CHARTS = r'''
@@ -169,18 +174,34 @@ for name in ["fig1_nav.png", "fig2_flowmap.png", "fig3_review2026.png", "fig4_ca
 '''
 
 TAKEAWAYS = r'''
-# 结论（与 results.json 一致）
+p, ic, rv = res["performance"], res["ic"], res["review_2026"]
+gb, gc, nc, bm = (p["gross_base"], p["gross_composite"],
+                  p["net_composite_50m"], p["benchmark_gross"])
+ref = res["report_ref"]
+key = pd.DataFrame(rv["key_dates"])
+pct = lambda x: f"{x * 100:.1f}%"
 
-- 公开 ETF 数据下，基础因子与综合因子都**没有复现**研报的 21.97% / 22.63% 年化与双位数超额；
-  样本区间、标的池与数据口径（Wind 主动买卖 vs 量价代理）是主要差异来源。
-- 5000 万元、参与率 ≤5% ADV、含佣金/价差/冲击后，收益进一步被成本与容量侵蚀；
-  容量不是静态比例，而是“流动性差的行业先被挤出”的动态过程。
-- 研报最可复用的不是五因子合成，而是**净流入为正比例**这一广度指标：
-  2026-06-30 见顶、07-06 骤降，随后半导体 7 月 −34%。广度比强度更早反映分歧。
-- 方法层面最大的警示是**识别问题**：流向图未知量远多于方程，
-  “拟合误差 <5‰”不能当作模型有效的证据；最小二范数解是假设，不是事实。
+lines = [
+    f"1. 绝对收益未复现：理论组合年化 基础 {pct(gb['cagr'])} / 综合 {pct(gc['cagr'])} / "
+    f"基准 {pct(bm['cagr'])}，研报为 {pct(ref['base']['cagr'])} / {pct(ref['composite']['cagr'])} / "
+    f"{pct(ref['benchmark']['cagr'])}。",
+    f"2. 改进方向复现：综合较基础收益 {(gc['cagr'] - gb['cagr']) * 100:+.1f} pct，最大回撤 "
+    f"{pct(gb['mdd'])} → {pct(gc['mdd'])}；Rank IC {ic['base']['mean_ic']:.3f} → "
+    f"{ic['composite']['mean_ic']:.3f}（t={ic['composite']['ic_t']:.2f}）。",
+    f"3. 5000 万可执行性：净年化 {pct(nc['cagr'])}、最大回撤 {pct(nc['mdd'])}、"
+    f"成本拖累 {pct(nc['cost_drag_annual'])}，相对基准 {nc['excess_vs_benchmark'] * 100:+.1f} pct；"
+    f"bootstrap 95% 区间 [{res['bootstrap_excess']['annualized_ci_low'] * 100:+.1f}, "
+    f"{res['bootstrap_excess']['annualized_ci_high'] * 100:+.1f}] pct/年，不显著。",
+    f"4. 广度拐点未复现：本地半导体广度 "
+    + " / ".join(f"{v * 100:.0f}%" for v in key["semi_breadth"])
+    + f"，研报为 {ref['semi_breadth_path']}。",
+    f"5. 识别问题：N={res['meta']['problem_size']['n_industries']} 时 "
+    f"{res['meta']['problem_size']['n_params']} 个参数对 "
+    f"{res['meta']['problem_size']['n_equations']} 个方程，拟合误差小不能当作模型有效的证据。",
+]
+for line in lines:
+    print(line)
 '''
-
 
 def build() -> Path:
     nb = nbf.v4.new_notebook()
@@ -214,7 +235,8 @@ def build() -> Path:
         nbf.v4.new_code_cell(REVIEW),
         nbf.v4.new_markdown_cell("## 6. 图表"),
         nbf.v4.new_code_cell(CHARTS),
-        nbf.v4.new_markdown_cell(TAKEAWAYS),
+        nbf.v4.new_markdown_cell("## 7. 结论（由 results.json 渲染，与报告一致）"),
+        nbf.v4.new_code_cell(TAKEAWAYS),
     ]
     nb.metadata["kernelspec"] = {"name": "python3", "display_name": "Python 3",
                                  "language": "python"}

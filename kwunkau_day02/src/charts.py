@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -15,7 +14,8 @@ from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.dates as mdates
 import matplotlib.patheffects as pe
 
-from .config import FIG_DIR, OUTPUT, TABLE_DIR, ensure_dirs, setup_matplotlib
+from .config import (DATA_PROCESSED, FIG_DIR, KEY_DATES, OUTPUT, ensure_dirs,
+                     setup_matplotlib)
 from .fetch_data import fetch_etf_daily
 from .build_features import build_dataset, cross_section
 from .flowmap import solve_day
@@ -126,9 +126,8 @@ def _draw_flow_map(ax, q, pairs, codes, names, title, top_edges=26):
 def fig_flowmap() -> None:
     feats = build_dataset(fetch_etf_daily())
     names = feats["meta"]["name"].to_dict()
-    dates = ["2026-06-24", "2026-06-30", "2026-07-06"]
     fig, axes = plt.subplots(1, 3, figsize=(9.6, 3.45))
-    for ax, d in zip(axes, dates):
+    for ax, d in zip(axes, KEY_DATES):
         cs = cross_section(feats, pd.Timestamp(d))
         sol = solve_day(cs["Q"], cs["H"], cs["V"], cs["S"], n_random=5)
         _draw_flow_map(ax, sol["q"], sol["pairs"], cs["codes"], names,
@@ -144,8 +143,7 @@ def fig_review_2026() -> None:
     res = json.loads((OUTPUT / "results.json").read_text(encoding="utf-8"))
     monthly = pd.DataFrame(res["review_2026"]["monthly"])
     feats = build_dataset(fetch_etf_daily())
-    micro = pd.read_csv(Path(OUTPUT).parent / "data" / "processed" / "flow_micro.csv",
-                        parse_dates=["date"])
+    micro = pd.read_csv(DATA_PROCESSED / "flow_micro.csv", parse_dates=["date"])
 
     fig, axes = plt.subplots(1, 2, figsize=(9.6, 4.1),
                              gridspec_kw={"width_ratios": [1.35, 1]})
@@ -183,7 +181,7 @@ def fig_review_2026() -> None:
     ax2.set_ylabel("净流入为正比例（%）", color=RED)
     ax2.set_ylim(0, 100)
     ax2.tick_params(axis="y", colors=RED)
-    for d in ["2026-06-24", "2026-06-30", "2026-07-06"]:
+    for d in KEY_DATES:
         ax.axvline(pd.Timestamp(d), color=GRAY, ls="--", lw=0.7)
     ax.xaxis.set_major_locator(mdates.MonthLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%m月"))
@@ -204,9 +202,7 @@ def fig_capacity() -> None:
     x = cap["资金规模(万元)"]
     ax.plot(x, cap["年化收益"] * 100, marker="o", color=RED, lw=1.5,
             label="净年化收益")
-    ax.axhline(res["benchmark_excess_line"] if "benchmark_excess_line" in res else
-               res["performance"]["benchmark_gross"]["cagr"] * 100,
-               color=BLUE, ls="--", lw=1.0, label="等权基准")
+    ax.axhline(res["performance"]["benchmark_gross"]["cagr"] * 100, color=BLUE, ls="--", lw=1.0, label="等权基准")
     ax.set_xscale("log")
     ax.set_xlabel("资金规模（万元，对数轴）")
     ax.set_ylabel("年化收益（%）")
@@ -221,7 +217,7 @@ def fig_capacity() -> None:
     h2, l2 = ax2.get_legend_handles_labels()
     ax.legend(h1 + h2, l1 + l2, frameon=False, fontsize=7.8, loc="lower right")
     ax.axvline(5000, color=GRAY, ls=":", lw=0.9)
-    ax.text(5200, 4.55, "5000 万", fontsize=7, color=GRAY,
+    ax.text(5200, ax.get_ylim()[1] * 0.97, "5000 万", va="top", fontsize=7, color=GRAY,
             bbox=dict(facecolor="white", edgecolor="none", pad=1.0))
     ax.set_title("图2　容量曲线：5000 万附近触顶，更大规模下策略被截断为低换手组合",
                  loc="left", fontsize=10, color=INK)
