@@ -4,6 +4,10 @@
     python run_all.py                 # 使用本地缓存，离线可跑
     python run_all.py --refresh       # 重新抓取原始数据并重算流向图
     python run_all.py --skip-notebook # 跳过 Notebook 生成与执行
+    python run_all.py --relink        # Notebook 提交推送后：锁定链接 → 重新生成报告/图解
+
+重跑 Notebook 后的提交流程（锁定链接依赖 Notebook 提交号，必须分两段）：
+    python run_all.py → 提交推送 → python run_all.py --relink → 再提交推送
 """
 
 from __future__ import annotations
@@ -33,10 +37,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="行业资金流向图 ETF 复现与 5000 万模拟")
     parser.add_argument("--refresh", action="store_true", help="重新抓数并重算流向图")
     parser.add_argument("--skip-notebook", action="store_true", help="跳过 Notebook")
+    parser.add_argument("--relink", action="store_true",
+                        help="Notebook 提交推送后：锁定 nbviewer 链接并重新生成报告与图解")
     args = parser.parse_args()
 
     check_env()
     t0 = time.time()
+
+    if args.relink:
+        from src.relink import run as run_relink
+
+        url = run_relink()
+        print(f"[done] nbviewer：{url}\n"
+              "       请再提交推送一次（报告、图解、README、需求.md）")
+        return
 
     from src.fetch_data import build_raw, fetch_etf_daily
 
@@ -96,6 +110,13 @@ def main() -> None:
           f"最大回撤 {perf['mdd']*100:.1f}%，"
           f"期末 {perf['final_value']/1e4:,.0f} 万元  "
           f"总耗时 {time.time() - t0:.0f}s")
+
+    from src.config import nb_link_problem
+
+    problem = nb_link_problem()
+    if problem:
+        print(f"[警告] 报告中的 nbviewer 链接已过期：{problem}。\n"
+              "       提交推送 Notebook 后运行 python run_all.py --relink，再提交推送一次。")
 
 
 if __name__ == "__main__":

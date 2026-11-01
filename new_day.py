@@ -75,9 +75,12 @@ python -m venv .venv
 python run_all.py
 ```
 
+重跑 Notebook 后分两段提交（nbviewer 主链接锁定到 Notebook 的提交号）：
+`python run_all.py` → 提交推送 → `python run_all.py --relink` → 再提交推送。
+
 ## 在线查看
 
-nbviewer：`https://nbviewer.org/urls/raw.githack.com/kwunkau/quant-research/main/__DAY__/output/__DAY___research.ipynb`
+nbviewer（提交号由 `python run_all.py --relink` 回填）：`https://nbviewer.org/urls/rawcdn.githack.com/kwunkau/quant-research/0000000/__DAY__/output/__DAY___research.ipynb`
 """,
     ".gitignore": """data/processed/
 output/figures/
@@ -93,6 +96,7 @@ __pycache__/
     "src/__init__.py": '"""__DAY__ 源码包。"""\n',
     "src/config.py": '''"""__DAY__ 全局配置：路径、区间、分享链接。"""
 
+import subprocess
 from pathlib import Path
 
 PROJECT_ID = "__DAY__"
@@ -116,15 +120,50 @@ GITHUB_BRANCH = "main"
 NB_PATH = f"{PROJECT_ID}/output/{PROJECT_ID}_research.ipynb"
 REPO_URL = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}"
 GITHUB_NB_URL = f"{REPO_URL}/blob/{GITHUB_BRANCH}/{NB_PATH}"
-# nbviewer 的 /github/<user>/<repo>/blob/main/ 路由会命中 nbviewer 服务端过期的分支缓存
-# （返回 “not found among N files”），同一文件用 blob/HEAD/ 或提交号访问正常。
-# 主链接走 /urls/ + CDN（不经 GitHub API），备选走 blob/HEAD/；Colab 链接可直接运行。
+NB_REL = f"output/{PROJECT_ID}_research.ipynb"  # 相对作业目录
+
+
+def _git(*args: str) -> subprocess.CompletedProcess | None:
+    """在作业目录执行 git；无 git 或不在仓库中（如 Colab 直接上传）时返回 None。"""
+    try:
+        out = subprocess.run(["git", *args], cwd=ROOT, capture_output=True,
+                             text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return None if "not a git repository" in out.stderr else out
+
+
+def _nb_commit() -> str | None:
+    """最近一次提交 Notebook 的 commit SHA；无 git / 未提交时返回 None（回退到分支链接）。"""
+    out = _git("log", "-1", "--format=%H", "--", NB_REL)
+    return (out.stdout.strip() or None) if out else None
+
+
+def nb_link_problem() -> str | None:
+    """锁定链接是否指向本地这版 Notebook 且已推送；有问题返回原因，没问题或无法校验返回 None。"""
+    if _git("rev-parse", "--git-dir") is None:
+        return None
+    if NB_COMMIT is None:
+        return "Notebook 尚未提交"
+    if _git("diff", "--quiet", NB_COMMIT, "--", NB_REL).returncode != 0:
+        return f"本地 Notebook 与提交 {NB_COMMIT[:7]} 不一致（重跑后尚未提交）"
+    if _git("merge-base", "--is-ancestor", NB_COMMIT,
+            f"origin/{GITHUB_BRANCH}").returncode != 0:
+        return f"提交 {NB_COMMIT[:7]} 尚未推送到 origin/{GITHUB_BRANCH}"
+    return None
+
+
+# nbviewer 的 /github/ 路由依赖 GitHub API：分支目录会被服务端旧缓存卡住（404），限流时 503。
+# 主链接走 /urls/ + rawcdn.githack 并锁定到 Notebook 所在提交；/github/ 直连与原生视图作备选。
+NB_COMMIT = _nb_commit()
+NBVIEWER_BRANCH_URL = (f"https://nbviewer.org/urls/raw.githack.com/{GITHUB_USER}/{GITHUB_REPO}"
+                       f"/{GITHUB_BRANCH}/{NB_PATH}")
+NBVIEWER_URL = (f"https://nbviewer.org/urls/rawcdn.githack.com/{GITHUB_USER}/{GITHUB_REPO}"
+                f"/{NB_COMMIT}/{NB_PATH}" if NB_COMMIT else NBVIEWER_BRANCH_URL)
 NBVIEWER_CANONICAL = (f"https://nbviewer.org/github/{GITHUB_USER}/{GITHUB_REPO}"
                       f"/blob/HEAD/{NB_PATH}")
 COLAB_URL = (f"https://colab.research.google.com/github/{GITHUB_USER}/{GITHUB_REPO}"
              f"/blob/{GITHUB_BRANCH}/{NB_PATH}")
-NBVIEWER_URL = (f"https://nbviewer.org/urls/raw.githack.com/{GITHUB_USER}/{GITHUB_REPO}"
-                f"/{GITHUB_BRANCH}/{NB_PATH}")
 
 # 中文字体：按顺序尝试（Windows / macOS / Colab 的文泉驿 / Noto），直接 addfont 绕过字体缓存
 FONT_FILES = [
@@ -167,6 +206,60 @@ def run() -> dict:
     raise NotImplementedError(
         "本作业尚未实现。请先完善 需求/需求.md，再执行 `执行 __DAY__` 让 Claude 补全。"
     )
+
+
+def build_docs() -> None:
+    """只重新生成报告 PDF/HTML 及附加页面（不重跑 Notebook），供 --relink 调用。"""
+    raise NotImplementedError("实现报告生成后在此调用（如 make_report.build()）。")
+''',
+    "src/relink.py": '''"""推送 Notebook 后的第二段：校验锁定链接 → 回填 README/需求.md → 重新生成报告。
+
+锁定链接依赖 Notebook 的提交号，必须在 Notebook 提交并推送之后才能生成，
+因此不能并入 run_all.py 的同一次运行。
+"""
+
+from __future__ import annotations
+
+import re
+
+from .config import GITHUB_REPO, GITHUB_USER, NB_COMMIT, NBVIEWER_URL, ROOT, nb_link_problem
+
+_PINNED = re.compile(
+    rf"(rawcdn\\.githack\\.com/{GITHUB_USER}/{GITHUB_REPO}/)[0-9a-f]{{7,40}}(/)")
+LINK_DOCS = [ROOT / "README.md", ROOT / "需求" / "需求.md"]
+
+
+def check() -> None:
+    """锁定链接与本地 Notebook 不一致时直接报错，禁止生成带过期链接的 PDF。"""
+    problem = nb_link_problem()
+    if problem:
+        raise SystemExit(
+            f"[relink] {problem}。\\n"
+            "         请先提交并推送 Notebook，再运行：python run_all.py --relink")
+
+
+def sync_docs() -> list[str]:
+    """把 README / 需求.md 中的锁定链接改到当前提交号，返回被改动的文件名。"""
+    changed = []
+    for path in LINK_DOCS:
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        new = _PINNED.sub(rf"\\g<1>{NB_COMMIT}\\g<2>", text)
+        if new != text:
+            path.write_text(new, encoding="utf-8")
+            changed.append(path.name)
+    return changed
+
+
+def run() -> str:
+    check()
+    from .pipeline import build_docs
+
+    changed = sync_docs()
+    build_docs()
+    print(f"[relink] 链接已锁定到 {NB_COMMIT[:7]}，已更新：{', '.join(changed) or '文档无需改动'}、报告")
+    return NBVIEWER_URL
 ''',
     "run_all.py": '''"""__DAY__ 一键复现入口（需在已安装依赖的虚拟环境中运行）。"""
 
@@ -192,11 +285,22 @@ def check_env() -> None:
 
 def main() -> None:
     check_env()
+    if "--relink" in sys.argv:  # Notebook 提交推送后：锁定链接 → 重新生成报告
+        from src.relink import run as run_relink
+
+        print(f"[done] nbviewer：{run_relink()}\\n       请再提交推送一次")
+        return
+
+    from src.config import nb_link_problem
     from src.pipeline import run
 
     t0 = time.time()
     run()
     print(f"[done] 全流程完成  {time.time() - t0:.1f}s")
+    problem = nb_link_problem()
+    if problem:
+        print(f"[警告] 报告中的 nbviewer 链接已过期：{problem}。\\n"
+              "       提交推送 Notebook 后运行 python run_all.py --relink，再提交推送一次。")
 
 
 if __name__ == "__main__":

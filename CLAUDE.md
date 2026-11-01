@@ -92,16 +92,21 @@ python -m venv .venv            # Python 3.12+
 3. `git add -A && git commit`。
 4. 首次建仓：`gh repo create quant-research --public --source=. --remote=origin --push`；后续：`git push`。
 5. 链接推导：
-   - nbviewer：`https://nbviewer.org/github/<user>/<repo>/blob/<branch>/<PROJECT_ID>/output/<PROJECT_ID>_research.ipynb`
+   - nbviewer 主链接（锁定提交）：`https://nbviewer.org/urls/rawcdn.githack.com/<user>/<repo>/<NB_COMMIT>/<PROJECT_ID>/output/<PROJECT_ID>_research.ipynb`，
+     `NB_COMMIT` 由 `config.py` 取最后一次改动 Notebook 的提交号
    - raw 校验：`https://raw.githubusercontent.com/<user>/<repo>/<branch>/<同上路径>`
-6. 重新生成报告（链接写入 PDF「复现说明」），再提交推送一次，保证仓库内容与 PDF 一致。
+6. 执行 `python run_all.py --relink`：校验 Notebook 已提交且已推送 → 回填 README/需求.md 链接 →
+   重新生成报告与图解；再提交推送一次，保证仓库内容与 PDF 一致。
+7. **每次重跑 Notebook 都必须重走 3–6**（锁定链接依赖提交号，同一次运行内无法得知）。
+   校验不通过时 `--relink` 报错退出，禁止跳过校验手动生成报告后推送。
 
 ### 6.3 链接验收标准
 
 - `raw.githubusercontent.com` 返回 200，且文件体积与本机 `.ipynb` 一致。
 - nbviewer 返回 200，页面能看到标题与图表（空输出 = 没推执行结果，重跑后再推）。
-- nbviewer `/github/` 路由常因 GitHub API 限流返回 503/404：主链接用 `/urls/raw.githack.com/...`，
-  `/github/` 直连与 GitHub 原生视图作为备选一并写入报告（`config.py` 已推导三条）。
+- nbviewer `/github/` 路由常因服务端旧缓存（404）与 GitHub API 限流（503）不可用：主链接用
+  `/urls/rawcdn.githack.com/<commit>/...`，`/github/` 直连与 GitHub 原生视图作为备选一并写入报告。
+- PDF 中的提交号必须等于最后一次改动 Notebook 的提交，且该提交已在 `origin/<branch>` 上。
 - **推送前必须执行过 Notebook**，图表、表格、数字已内嵌；空输出直接推送视为不合格。
 
 ### 6.4 Notebook 要求

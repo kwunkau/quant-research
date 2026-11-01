@@ -98,16 +98,37 @@ GITHUB_NB_URL = f"{REPO_URL}/blob/{GITHUB_BRANCH}/{NB_PATH}"
 
 
 
-def _nb_commit() -> str | None:
-    """最近一次提交 Notebook 的 commit SHA；无 git / 未提交时返回 None（回退到分支链接）。"""
+NB_REL = f"output/{PROJECT_ID}_research.ipynb"  # 相对作业目录
+
+
+def _git(*args: str) -> subprocess.CompletedProcess | None:
+    """在作业目录执行 git；无 git 或不在仓库中（如 Colab 直接上传）时返回 None。"""
     try:
-        out = subprocess.run(
-            ["git", "log", "-1", "--format=%H", "--", f"output/{PROJECT_ID}_research.ipynb"],
-            cwd=ROOT, capture_output=True, text=True, timeout=10,
-        )
+        out = subprocess.run(["git", *args], cwd=ROOT, capture_output=True,
+                             text=True, timeout=10)
     except (OSError, subprocess.SubprocessError):
         return None
-    return out.stdout.strip() or None
+    return None if "not a git repository" in out.stderr else out
+
+
+def _nb_commit() -> str | None:
+    """最近一次提交 Notebook 的 commit SHA；无 git / 未提交时返回 None（回退到分支链接）。"""
+    out = _git("log", "-1", "--format=%H", "--", NB_REL)
+    return (out.stdout.strip() or None) if out else None
+
+
+def nb_link_problem() -> str | None:
+    """锁定链接是否指向本地这版 Notebook 且已推送；有问题返回原因，没问题或无法校验返回 None。"""
+    if _git("rev-parse", "--git-dir") is None:
+        return None
+    if NB_COMMIT is None:
+        return "Notebook 尚未提交"
+    if _git("diff", "--quiet", NB_COMMIT, "--", NB_REL).returncode != 0:
+        return f"本地 Notebook 与提交 {NB_COMMIT[:7]} 不一致（重跑后尚未提交）"
+    if _git("merge-base", "--is-ancestor", NB_COMMIT,
+            f"origin/{GITHUB_BRANCH}").returncode != 0:
+        return f"提交 {NB_COMMIT[:7]} 尚未推送到 origin/{GITHUB_BRANCH}"
+    return None
 
 
 # nbviewer 的 /github/ 路由依赖 GitHub API：分支目录会被服务端旧缓存卡住（404 “not found

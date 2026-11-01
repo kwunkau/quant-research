@@ -37,6 +37,9 @@ python run_all.py
 ```
 
 - 默认读取 `data/raw/` 快照，离线可跑。
+- 重跑 Notebook 后分两段提交（nbviewer 主链接锁定到 Notebook 的提交号，提交前无法得知）：
+  `python run_all.py` → 提交推送 → `python run_all.py --relink`（校验链接、回填文档、重新生成报告与图解）→ 再提交推送。
+  链接与本地 Notebook 不一致时 `--relink` 直接报错，`run_all.py` 结尾也会打印警告。
 - `python run_all.py --refresh` 重新抓取；若新浪资金流接口不可用，长样本回测不受影响，
   但 2026 案例对照会跳过并在日志中提示。
 - 全样本资金流向图逐日求解约 10–15 分钟；缓存位于 `data/processed/flow_micro.csv`。
